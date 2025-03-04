@@ -1,1 +1,0 @@
-# generate WorldQuant Alpha101 
