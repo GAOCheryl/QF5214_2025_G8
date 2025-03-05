@@ -2,7 +2,7 @@ import os
 import psycopg2
 from psycopg2 import OperationalError
 
-class DatabaseManager:
+class database_utils:
     """Handles database connections and provides utility functions."""
     
     def __init__(self):
@@ -50,7 +50,7 @@ class DatabaseManager:
 
 
 if __name__ == "__main__":
-    db = DatabaseManager()
+    db = database_utils()
     db.connect()
     
     # Fetch all table names from datacollection schema
