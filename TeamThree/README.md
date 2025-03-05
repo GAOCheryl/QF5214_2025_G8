@@ -50,6 +50,11 @@ database_utils.py provides a simple and reusable class, DatabaseUtils, for handl
 |---------------|-------------|-----------------|---------------|
 | query | query | str | / |
 | params | Variables are specified either with positional (%s) or named (%(name)s) placeholders. [Ref](https://www.psycopg.org/docs/usage.html#query-parameters) | tuple, dictionary, list | None |
+- set_schema(self, scheme): Set Schema for the Session as default
+
+| Parameter Name | Description | Type | Default Value |
+|---------------|-------------|-----------------|---------------|
+| scheme | scheme in database | str | / |
 - fetch_results(self): Fetch query results easily
 - close_connection(self): Ensure proper connection closure
 - Handle errors and rollbacks gracefully

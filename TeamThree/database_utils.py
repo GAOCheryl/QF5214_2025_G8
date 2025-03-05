@@ -36,6 +36,10 @@ class database_utils:
         except Exception as e:
             self.conn.rollback()
             print(f"Error executing query: {e}")
+    
+    def set_schema(self, schema):
+        """Connects to a specific schema."""
+        self.execute_query(f"SET search_path TO {schema}")
 
     def fetch_results(self):
         """Fetches all rows from the last executed query."""
