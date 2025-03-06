@@ -41,7 +41,7 @@ class database_utils:
             self.conn.rollback()
             print(f"Error executing query: {e}")
             
-    def df_to_sql_table(self, df, type_list, schema, table_name):
+    def df_to_sql_table(self, df, type_list, schema, table_name, drop_table = True):
         """Inserts a DataFrame into a table in the database."""
         try:
             # set the data type
@@ -49,6 +49,8 @@ class database_utils:
                 df[df.columns[i]] = df[df.columns[i]].astype(type_list[i])
                 
             # insert the DataFrame into the table under certain schema
+            if drop_table:
+                self.execute_query(f"DROP TABLE IF EXISTS {schema}.{table_name}")
             df.to_sql(table_name, self.engine, schema=schema, if_exists='replace', index=False)
             
         except Exception as e:

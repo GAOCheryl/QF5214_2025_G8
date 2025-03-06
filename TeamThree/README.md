@@ -43,18 +43,18 @@ Below are the base python files for Data Processing.
 
 ###  database_utils
 database_utils.py provides a simple and reusable class, DatabaseUtils, for handling PostgreSQL database connections and queries in Python. It includes methods for connecting to the database, executing queries, fetching results, and closing connections.
-- connect(): Establish a PostgreSQL database connection
+- `connect(self, if_return)`: Establish a PostgreSQL database connection
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
 | if_return | whether return cursor, conn and engine | bool | Flase |
-- execute_query(): Execute SQL queries with optional parameters
+- `execute_query(self, query, params)`: Execute SQL queries with optional parameters
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
 | query | query | str | / |
 | params | Variables are specified either with positional (%s) or named (%(name)s) placeholders. [Ref](https://www.psycopg.org/docs/usage.html#query-parameters) | tuple, dictionary, list | None |
-- df_to_sql_table(): save dataframe as a new table under a given schema
+- `df_to_sql_table(self,df)`: save dataframe as a new table under a given schema
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
@@ -62,7 +62,8 @@ database_utils.py provides a simple and reusable class, DatabaseUtils, for handl
 | type_list | A list specifying the data types for each column in the DataFrame. It should match the order of the columns in df | list | \ |
 | schema | The DataFrame to be inserted into the database | str | \ |
 | table_name | The name of the table in which the DataFrame will be stored | str | \ |
-- set_schema(): Set Schema for the Session as default
+| drop_table | Drop table if table exists | bool | True| 
+- `set_schema(schema)`: Set Schema for the Session as default
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
