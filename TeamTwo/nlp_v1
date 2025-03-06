@@ -259,8 +259,13 @@ class SentimentEmotionAnalyzer:
 
     def classify_intent(self, text, k=0.5):
         """
-        Step 5b: Classify intent (Buy/Sell/Hold/Neutral/Spam) with textual + numeric votes,
-        then apply tie resolution. Also compute confidence with an exponential scaling factor.
+        Step 5b: Classify intent (Buy/Sell/Hold/Neutral/Spam) by combining:
+        A) Weighted textual keyword votes (each match = 2 votes)
+        B) Numeric votes from tokens (each match = 1 vote)
+        Then resolves ties using our priority logic.
+        Confidence is computed as:
+            (vote ratio) * (1 - exp(-k * total_votes))
+        Returns (chosen_intent, confidence)
         """
         tokens = self.spacy_tokenise_merge(text)
         votes = {cat:0 for cat in self.intent_keywords}
