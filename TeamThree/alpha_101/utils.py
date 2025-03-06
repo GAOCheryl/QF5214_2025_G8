@@ -167,12 +167,12 @@ def decay_linear(df, period=10):
     """
     # Clean data
     if df.isnull().values.any():
-        df.fillna(method='ffill', inplace=True)
-        df.fillna(method='bfill', inplace=True)
+        df.ffill(inplace=True)
+        df.bfill(inplace=True)
         df.fillna(value=0, inplace=True)
     na_lwma = np.zeros_like(df)
     na_lwma[:period, :] = df.iloc[:period, :] 
-    na_series = df.as_matrix()
+    na_series = df.values
 
     divisor = period * (period + 1) / 2
     y = (np.arange(period) + 1) * 1.0 / divisor
@@ -183,19 +183,36 @@ def decay_linear(df, period=10):
         na_lwma[row, :] = (np.dot(x.T, y))
     return pd.DataFrame(na_lwma, index=df.index, columns=['CLOSE'])  
 
+def IndNeutralize(df, level = 'IndClass_Sector'):
+    """
+    Cross-sectionally neutralizes x within each group g (e.g., subindustries, industries, sectors).
+    This means that df is demeaned within each unique value in level.
+    
+    Parameters:
+    - df: pd.DataFrame, the numerical data to be neutralized.
+    - level: string, categorical group labels (same index as x).
+
+    Returns:
+    - pd.DataFrame: Neutralized df where each column is demeaned within its respective group.
+    """
+    return df['col'] - df.groupby(level)['col'].transform('mean')
+
 class Alphas(object):
-    def __init__(self, df):
+    def __init__(self, df, level = 'IndClass_Sector'):
         self.open = df['Open']
         self.high = df['High'] 
         self.low = df['Low']   
         self.close = df['Close'] 
-        self.volume = df['Volume']*100 
+        self.volume = df['Volume']
         self.returns = df['Return'] 
-        self.vwap = (df['S_DQ_AMOUNT']*1000)/(df['S_DQ_VOLUME']*100+1) 
+        self.vwap = df['VWAP_5'] 
+        self.cap = df['Market_Cap']
+        self.sector = df[level]
+        self.level = level
         
     # Alpha#1	 (rank(Ts_ArgMax(SignedPower(((returns < 0) ? stddev(returns, 20) : close), 2.), 5)) -0.5)
     def alpha001(self):
-        inner = self.close
+        inner = self.close.copy()
         inner[self.returns < 0] = stddev(self.returns, 20)
         return rank(ts_argmax(inner ** 2, 5))
     
@@ -326,7 +343,7 @@ class Alphas(object):
     def alpha023(self):
         cond = sma(self.high, 20) < self.high
         alpha = pd.DataFrame(np.zeros_like(self.close),index=self.close.index,columns=['close'])
-        alpha.at[cond,'close'] = -1 * delta(self.high, 2).fillna(value=0)
+        alpha.loc[cond,'close'] = -1 * delta(self.high, 2).fillna(value=0)
         return alpha
     
     # Alpha#24	 ((((delta((sum(close, 100) / 100), 100) / delay(close, 100)) < 0.05) ||((delta((sum(close, 100) / 100), 100) / delay(close, 100)) == 0.05)) ? (-1 * (close - ts_min(close,100))) : (-1 * delta(close, 3)))
@@ -469,7 +486,11 @@ class Alphas(object):
         return ((((rank((1 / self.close)) * self.volume) / adv20) * ((self.high * rank((self.high - self.close))) / (sma(self.high, 5) /5))) - rank((self.vwap - delay(self.vwap, 5))))
     
     # Alpha#48	 (indneutralize(((correlation(delta(close, 1), delta(delay(close, 1), 1), 250) *delta(close, 1)) / close), IndClass.subindustry) / sum(((delta(close, 1) / delay(close, 1))^2), 250))
-     
+    def alpha048(self):
+        inner = ((correlation(delta(self.close, 1), delta(delay(self.close, 1), 1), 250) * delta(self.close, 1)) / self.close)
+        denominator = ts_sum((delta(self.close, 1) / delay(self.close, 1)) ** 2, 250)
+        df = pd.DataFrame({'col': inner, self.level: self.sector.values})
+        return IndNeutralize(df, self.level) / denominator
     
     # Alpha#49	 (((((delay(close, 20) - delay(close, 10)) / 10) - ((delay(close, 10) - close) / 10)) < (-1 *0.1)) ? 1 : ((-1 * 1) * (close - delay(close, 1))))
     def alpha049(self):
@@ -512,18 +533,25 @@ class Alphas(object):
         return -1 * df.replace([-np.inf, np.inf], 0).fillna(value=0)
 
     # Alpha#56	 (0 - (1 * (rank((sum(returns, 10) / sum(sum(returns, 2), 3))) * rank((returns * cap)))))
-    # This Alpha uses the Cap, however I have not acquired the data yet
-#    def alpha056(self):
-#        return (0 - (1 * (rank((sma(self.returns, 10) / sma(sma(self.returns, 2), 3))) * rank((self.returns * self.cap)))))
+    def alpha056(self):
+        return (0 - (1 * (rank((ts_sum(self.returns, 10) / ts_sum(ts_sum(self.returns, 2), 3))) * rank((self.returns * self.cap)))))
     
     # Alpha#57	 (0 - (1 * ((close - vwap) / decay_linear(rank(ts_argmax(close, 30)), 2))))
     def alpha057(self):
         return (0 - (1 * ((self.close - self.vwap) / decay_linear(rank(ts_argmax(self.close, 30)).to_frame(), 2).CLOSE)))
     
     # Alpha#58	 (-1 * Ts_Rank(decay_linear(correlation(IndNeutralize(vwap, IndClass.sector), volume,3.92795), 7.89291), 5.50322))
-     
+    def alpha058(self):
+        df = pd.DataFrame({'col': self.vwap, self.level: self.sector.values})
+        neutralized = IndNeutralize(df, self.level).to_frame(name = 'col')
+        return -1 * ts_rank(decay_linear(correlation(neutralized, self.volume, 4), 8), 6)
+    
     # Alpha#59	 (-1 * Ts_Rank(decay_linear(correlation(IndNeutralize(((vwap * 0.728317) + (vwap *(1 - 0.728317))), IndClass.industry), volume, 4.25197), 16.2289), 8.19648))
-     
+    #! (vwap * 0.728317) + (vwap *(1 - 0.728317)) ?
+    # def alpha059(self):
+    #     df = pd.DataFrame({'col': ((self.vwap * 0.728317) + (self.vwap *(1 - 0.728317))), self.level: self.sector.values})
+    #     neutralized = IndNeutralize(df, self.level).to_frame(name = 'col')
+    #     return -1 * ts_rank(decay_linear(correlation(neutralized, self.volume, 4), 16), 8)
     
     # Alpha#60	 (0 - (1 * ((2 * scale(rank(((((close - low) - (high - close)) / (high - low)) * volume)))) -scale(rank(ts_argmax(close, 10))))))
     def alpha060(self):
@@ -542,7 +570,12 @@ class Alphas(object):
         return ((rank(correlation(self.vwap, sma(adv20, 22), 10)) < rank(((rank(self.open) +rank(self.open)) < (rank(((self.high + self.low) / 2)) + rank(self.high))))) * -1)
     
     # Alpha#63	 ((rank(decay_linear(delta(IndNeutralize(close, IndClass.industry), 2.25164), 8.22237))- rank(decay_linear(correlation(((vwap * 0.318108) + (open * (1 - 0.318108))), sum(adv180,37.2467), 13.557), 12.2883))) * -1)
-     
+    def alpha063(self):
+        adv180 = sma(self.volume, 180)
+        df = pd.DataFrame({'col': self.close, self.level: self.sector})
+        neutralized = IndNeutralize(df, self.level).to_frame(name = 'col')
+        corr = correlation(((self.vwap * 0.318108) + (self.open * (1 - 0.318108))), sma(adv180,37), 14).to_frame(name = 'col')
+        return ((rank(decay_linear(delta(neutralized, 2), 8)) - rank(decay_linear(corr, 12))) * -1) 
     
     # Alpha#64	 ((rank(correlation(sum(((open * 0.178404) + (low * (1 - 0.178404))), 12.7054),sum(adv120, 12.7054), 16.6208)) < rank(delta(((((high + low) / 2) * 0.178404) + (vwap * (1 -0.178404))), 3.69741))) * -1)
     def alpha064(self):
@@ -559,7 +592,7 @@ class Alphas(object):
         return ((rank(decay_linear(delta(self.vwap, 4).to_frame(), 7).CLOSE) + ts_rank(decay_linear(((((self.low* 0.96633) + (self.low * (1 - 0.96633))) - self.vwap) / (self.open - ((self.high + self.low) / 2))).to_frame(), 11).CLOSE, 7)) * -1)
     
     # Alpha#67	 ((rank((high - ts_min(high, 2.14593)))^rank(correlation(IndNeutralize(vwap,IndClass.sector), IndNeutralize(adv20, IndClass.subindustry), 6.02936))) * -1)
-     
+    #! ^
     
     # Alpha#68	 ((Ts_Rank(correlation(rank(high), rank(adv15), 8.91644), 13.9333) <rank(delta(((close * 0.518371) + (low * (1 - 0.518371))), 1.06157))) * -1)
     def alpha068(self):
@@ -567,9 +600,10 @@ class Alphas(object):
         return ((ts_rank(correlation(rank(self.high), rank(adv15), 9), 14) <rank(delta(((self.close * 0.518371) + (self.low * (1 - 0.518371))), 1.06157))) * -1)
     
     # Alpha#69	 ((rank(ts_max(delta(IndNeutralize(vwap, IndClass.industry), 2.72412),4.79344))^Ts_Rank(correlation(((close * 0.490655) + (vwap * (1 - 0.490655))), adv20, 4.92416),9.0615)) * -1)
+    #! ^
          
     # Alpha#70	 ((rank(delta(vwap, 1.29456))^Ts_Rank(correlation(IndNeutralize(close,IndClass.industry), adv50, 17.8256), 17.9171)) * -1)
-     
+    #! ^
     
     # Alpha#71	 max(Ts_Rank(decay_linear(correlation(Ts_Rank(close, 3.43976), Ts_Rank(adv180,12.0647), 18.0175), 4.20501), 15.6948), Ts_Rank(decay_linear((rank(((low + open) - (vwap +vwap)))^2), 16.4662), 4.4388))
     def alpha071(self):
@@ -577,8 +611,9 @@ class Alphas(object):
         p1=ts_rank(decay_linear(correlation(ts_rank(self.close, 3), ts_rank(adv180,12), 18).to_frame(), 4).CLOSE, 16)
         p2=ts_rank(decay_linear((rank(((self.low + self.open) - (self.vwap +self.vwap))).pow(2)).to_frame(), 16).CLOSE, 4)
         df=pd.DataFrame({'p1':p1,'p2':p2})
-        df.at[df['p1']>=df['p2'],'max']=df['p1']
-        df.at[df['p2']>=df['p1'],'max']=df['p2']
+        df.loc[df['p1'] >= df['p2'], 'max'] = df['p1']
+        df.loc[df['p2'] > df['p1'], 'max'] = df['p2']
+        
         return df['max']
         #return max(ts_rank(decay_linear(correlation(ts_rank(self.close, 3), ts_rank(adv180,12), 18).to_frame(), 4).CLOSE, 16), ts_rank(decay_linear((rank(((self.low + self.open) - (self.vwap +self.vwap))).pow(2)).to_frame(), 16).CLOSE, 4))
     
@@ -592,8 +627,8 @@ class Alphas(object):
         p1=rank(decay_linear(delta(self.vwap, 5).to_frame(), 3).CLOSE)
         p2=ts_rank(decay_linear(((delta(((self.open * 0.147155) + (self.low * (1 - 0.147155))), 2) / ((self.open *0.147155) + (self.low * (1 - 0.147155)))) * -1).to_frame(), 3).CLOSE, 17)
         df=pd.DataFrame({'p1':p1,'p2':p2})
-        df.at[df['p1']>=df['p2'],'max']=df['p1']
-        df.at[df['p2']>=df['p1'],'max']=df['p2']
+        df.loc[df['p1']>=df['p2'],'max']=df['p1']
+        df.loc[df['p2']>=df['p1'],'max']=df['p2']
         return -1*df['max']
         #return (max(rank(decay_linear(delta(self.vwap, 5).to_frame(), 3).CLOSE),ts_rank(decay_linear(((delta(((self.open * 0.147155) + (self.low * (1 - 0.147155))), 2) / ((self.open *0.147155) + (self.low * (1 - 0.147155)))) * -1).to_frame(), 3).CLOSE, 17)) * -1)
     
@@ -616,8 +651,8 @@ class Alphas(object):
         p1=rank(decay_linear(((((self.high + self.low) / 2) + self.high) - (self.vwap + self.high)).to_frame(), 20).CLOSE)
         p2=rank(decay_linear(correlation(((self.high + self.low) / 2), adv40, 3).to_frame(), 6).CLOSE)
         df=pd.DataFrame({'p1':p1,'p2':p2})
-        df.at[df['p1']>=df['p2'],'min']=df['p2']
-        df.at[df['p2']>=df['p1'],'min']=df['p1']
+        df.loc[df['p1']>=df['p2'],'min']=df['p2']
+        df.loc[df['p2']>=df['p1'],'min']=df['p1']
         return df['min']
         #return min(rank(decay_linear(((((self.high + self.low) / 2) + self.high) - (self.vwap + self.high)).to_frame(), 20).CLOSE),rank(decay_linear(correlation(((self.high + self.low) / 2), adv40, 3).to_frame(), 6).CLOSE))
     
@@ -667,8 +702,8 @@ class Alphas(object):
         p1=rank(decay_linear(((rank(self.open) + rank(self.low)) - (rank(self.high) + rank(self.close))).to_frame(),8).CLOSE)
         p2=ts_rank(decay_linear(correlation(ts_rank(self.close, 8), ts_rank(adv60,21), 8).to_frame(), 7).CLOSE, 3)
         df=pd.DataFrame({'p1':p1,'p2':p2})
-        df.at[df['p1']>=df['p2'],'min']=df['p2']
-        df.at[df['p2']>=df['p1'],'min']=df['p1']
+        df.loc[df['p1']>=df['p2'],'min']=df['p2']
+        df.loc[df['p2']>=df['p1'],'min']=df['p1']
         return df['min']
         #return min(rank(decay_linear(((rank(self.open) + rank(self.low)) - (rank(self.high) + rank(self.close))).to_frame(),8).CLOSE), ts_rank(decay_linear(correlation(ts_rank(self.close, 8), ts_rank(adv60,20.6966), 8).to_frame(), 7).CLOSE, 3))
     
@@ -685,8 +720,8 @@ class Alphas(object):
         p1=ts_rank(decay_linear(((((self.high + self.low) / 2) + self.close) < (self.low + self.open)).to_frame(), 15).CLOSE,19)
         p2=ts_rank(decay_linear(correlation(rank(self.low), rank(adv30), 8).to_frame(), 7).CLOSE,7)
         df=pd.DataFrame({'p1':p1,'p2':p2})
-        df.at[df['p1']>=df['p2'],'min']=df['p2']
-        df.at[df['p2']>=df['p1'],'min']=df['p1']
+        df.loc[df['p1']>=df['p2'],'min']=df['p2']
+        df.loc[df['p2']>=df['p1'],'min']=df['p1']
         return df['min']
         #return  min(ts_rank(decay_linear(((((self.high + self.low) / 2) + self.close) < (self.low + self.open)).to_frame(), 15).CLOSE,19), ts_rank(decay_linear(correlation(rank(self.low), rank(adv30), 8).to_frame(), 7).CLOSE,7))
     
@@ -709,8 +744,8 @@ class Alphas(object):
         p1=ts_rank(decay_linear(correlation(rank(self.vwap), rank(self.volume).to_frame(), 4),4).CLOSE, 8)
         p2=ts_rank(decay_linear(ts_argmax(correlation(ts_rank(self.close, 7),ts_rank(adv60, 4), 4), 13).to_frame(), 14).CLOSE, 13)
         df=pd.DataFrame({'p1':p1,'p2':p2})
-        df.at[df['p1']>=df['p2'],'max']=df['p1']
-        df.at[df['p2']>=df['p1'],'max']=df['p2']
+        df.loc[df['p1']>=df['p2'],'max']=df['p1']
+        df.loc[df['p2']>=df['p1'],'max']=df['p2']
         return -1*df['max']
         #return (max(ts_rank(decay_linear(correlation(rank(self.vwap), rank(self.volume).to_frame(), 4),4).CLOSE, 8), ts_rank(decay_linear(ts_argmax(correlation(ts_rank(self.close, 7),ts_rank(adv60, 4), 4), 13).to_frame(), 14).CLOSE, 13)) * -1)
     
