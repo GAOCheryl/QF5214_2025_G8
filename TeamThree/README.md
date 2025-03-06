@@ -54,7 +54,7 @@ database_utils.py provides a simple and reusable class, DatabaseUtils, for handl
 |---------------|-------------|-----------------|---------------|
 | query | query | str | / |
 | params | Variables are specified either with positional (%s) or named (%(name)s) placeholders. [Ref](https://www.psycopg.org/docs/usage.html#query-parameters) | tuple, dictionary, list | None |
-- `df_to_sql_table(self,df)`: save dataframe as a new table under a given schema
+- `df_to_sql_table(self,df, type_list, schema, table_name, drop_table)`: save dataframe as a new table under a given schema
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
