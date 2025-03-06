@@ -1,6 +1,7 @@
 import os
 import psycopg2
 from psycopg2 import OperationalError
+from sqlalchemy import create_engine
 
 class database_utils:
     """Handles database connections and provides utility functions."""
@@ -14,7 +15,7 @@ class database_utils:
         self.conn = None
         self.cursor = None
 
-    def connect(self):
+    def connect(self, if_return = False):
         """Establishes a database connection."""
         try:
             self.conn = psycopg2.connect(
@@ -25,6 +26,9 @@ class database_utils:
                 port=self.port
             )
             self.cursor = self.conn.cursor()
+            self.engine = create_engine(f'postgresql+psycopg2://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}')
+            if if_return:
+                return self.cursor, self.conn, self.engine
         except OperationalError as e:
             print(f"Database connection error: {e}")
 
@@ -36,6 +40,19 @@ class database_utils:
         except Exception as e:
             self.conn.rollback()
             print(f"Error executing query: {e}")
+            
+    def df_to_sql_table(self, df, type_list, schema, table_name):
+        """Inserts a DataFrame into a table in the database."""
+        try:
+            # set the data type
+            for i in range(len(df.columns)):
+                df[df.columns[i]] = df[df.columns[i]].astype(type_list[i])
+                
+            # insert the DataFrame into the table under certain schema
+            df.to_sql(table_name, self.engine, schema=schema, if_exists='replace', index=False)
+            
+        except Exception as e:
+            print(f"Error inserting DataFrame into table: {e}")
     
     def set_schema(self, schema):
         """Connects to a specific schema."""

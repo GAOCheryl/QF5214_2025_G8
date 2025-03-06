@@ -43,20 +43,32 @@ Below are the base python files for Data Processing.
 
 ###  database_utils
 database_utils.py provides a simple and reusable class, DatabaseUtils, for handling PostgreSQL database connections and queries in Python. It includes methods for connecting to the database, executing queries, fetching results, and closing connections.
-- connect(self): Establish a PostgreSQL database connection
-- execute_query(self, query, params=None): Execute SQL queries with optional parameters
+- connect(): Establish a PostgreSQL database connection
+
+| Parameter Name | Description | Type | Default Value |
+|---------------|-------------|-----------------|---------------|
+| if_return | whether return cursor, conn and engine | bool | Flase |
+- execute_query(): Execute SQL queries with optional parameters
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
 | query | query | str | / |
 | params | Variables are specified either with positional (%s) or named (%(name)s) placeholders. [Ref](https://www.psycopg.org/docs/usage.html#query-parameters) | tuple, dictionary, list | None |
-- set_schema(self, scheme): Set Schema for the Session as default
+- df_to_sql_table(): save dataframe as a new table under a given schema
+
+| Parameter Name | Description | Type | Default Value |
+|---------------|-------------|-----------------|---------------|
+| df | The DataFrame to be inserted into the database | pandas.dataframe | \ |
+| type_list | A list specifying the data types for each column in the DataFrame. It should match the order of the columns in df | list | \ |
+| schema | The DataFrame to be inserted into the database | str | \ |
+| table_name | The name of the table in which the DataFrame will be stored | str | \ |
+- set_schema(): Set Schema for the Session as default
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
 | scheme | scheme in database | str | / |
-- fetch_results(self): Fetch query results easily
-- close_connection(self): Ensure proper connection closure
+- fetch_results(): Fetch query results easily
+- close_connection(): Ensure proper connection closure
 - Handle errors and rollbacks gracefully
 
 ## 3. Model Description
