@@ -1,6 +1,6 @@
 # generate WorldQuant Alpha101 
 import pandas as pd
-from utils import Alphas
+from .utils import Alphas
 
 import sys
 import os

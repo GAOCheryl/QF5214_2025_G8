@@ -2,15 +2,32 @@ from master import MASTERModel
 import pickle
 import numpy as np
 import time
-from alpha_101.alpha101_generator import generate_alphas
+import pandas as pd
+import sys, os
+
+# Move up one directory from MASTER-master
+parent_dir = os.path.abspath(os.path.join(os.getcwd(), ".."))
+sys.path.append(parent_dir)
+
+from alpha_101.alpha_generator import generate_alphas
+
+# Call generate_alphas() which returns (df, final_df)
+df, final_df = generate_alphas()
+# Merge on "Date" and "Ticker" (adjust join type if needed)
+combined_df = pd.merge(df, final_df, on=["Date", "Ticker"], how="inner")
+# Save the merged DataFrame to a pickle file
+with open("training_input.pkl", "wb") as f:
+    pickle.dump(combined_df, f)
     
 
 # Please install qlib first before load the data.
 
 #universe = 'csi300' # ['csi300','csi800']
 #prefix = 'opensource' # ['original','opensource'], which training data are you using
-train_data_dir = f'data'
-with open(f'{train_data_dir}\{prefix}\{universe}_dl_train.pkl', 'rb') as f:
+#train_data_dir = f'data'
+#with open(f'{train_data_dir}\{prefix}\{universe}_dl_train.pkl', 'rb') as f:
+    #dl_train = pickle.load(f)
+with open(f'training_input.pkl', 'rb') as f:
     dl_train = pickle.load(f)
 
 predict_data_dir = f'data\opensource'
