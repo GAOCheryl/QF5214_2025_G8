@@ -1,6 +1,6 @@
 # generate WorldQuant Alpha101 
 import pandas as pd
-from .utils import Alphas
+from utils import Alphas
 
 import sys
 import os
@@ -42,7 +42,12 @@ def run_by_ticker(df, tickers, alpha_indices):
         final_df = pd.concat([final_df, result_df], ignore_index=True)
     return final_df
     
-def generate_alphas():
+def generate_alphas(input_schema = 'datacollection',
+                    input_table_name = 'stock_data',
+                    save = False, 
+                    output_schema = 'datacollection',
+                    output_table_name = 'alpha101',
+                    if_return = False):
     alpha_indices = [
         1, 2, 3, 4, 6, 7, 8, 9, 
         10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
@@ -62,12 +67,12 @@ def generate_alphas():
 
     db = database_utils()
     db.connect()
-    db.set_schema('datacollection')
-    db.execute_query('''
+    db.set_schema(input_schema)
+    db.execute_query(f'''
         SELECT "Date", "Open", "High", "Low", "Close", 
                "Volume", "Market_Cap", "Ticker", 
                "IndClass_Sector", "IndClass_Industry" 
-        FROM stock_data
+        FROM {input_table_name}
     ''')
     df = pd.DataFrame(db.fetch_results(), 
                       columns=["Date", "Open", "High", "Low", "Close", 
@@ -78,14 +83,21 @@ def generate_alphas():
     tickers = df['Ticker'].unique()
     final_df = run_by_ticker(df, tickers, alpha_indices)
     
+    if save:
+        new_columns = final_df.columns.to_list()
+        db.df_to_sql_table(final_df, ['object', 'string'] + ['float64'] * (len(new_columns) - 2), output_schema, output_table_name)
+    
     db.close_connection()
-    return df, final_df
+    
+    if if_return:
+        return df, final_df
 
-#if __name__ == '__main__':
- #   df, final_df = generate_alphas()
- #   print("Alpha DataFrame:\n", final_df.head())
-#    final_df.to_csv("alpha_results.csv", index=False)
- #   print("Done.")
+# if __name__ == '__main__':
+#     generate_alphas()
+#     df, final_df = generate_alphas()
+#     print("Alpha DataFrame:\n", final_df.head())
+#     final_df.to_csv("alpha_results.csv", index=False)
+#     print("Done.")
 
 
 
