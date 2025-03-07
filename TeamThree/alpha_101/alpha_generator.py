@@ -42,30 +42,73 @@ def run_by_ticker(df, tickers, alpha_indices):
         final_df = pd.concat([final_df, result_df], ignore_index=True)
     return final_df
     
-if __name__ == '__main__':
+def generate_alphas():
     alpha_indices = [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 
-        10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
-        20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 
-        30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 
-        40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 
-        50, 51, 52, 53, 54, 55, 56, 57, 58, 
-        60, 61, 62, 63, 64, 65, 66, 68, 
-        71, 72, 73, 74, 75, 77, 78, 
-        81, 83, 84, 85, 86, 88, 
+        1, 2, 3, 4, 5, 6, 7, 8, 9,
+        10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+        20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+        30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+        40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+        50, 51, 52, 53, 54, 55, 56, 57, 58,
+        60, 61, 62, 63, 64, 65, 66, 68,
+        71, 72, 73, 74, 75, 77, 78,
+        81, 83, 84, 85, 86, 88,
         92, 94, 95, 96, 98, 99, 101,
     ]
-    # for later usage
+
     db = database_utils()
     db.connect()
     db.set_schema('datacollection')
-    db.execute_query('SELECT "Date", "Open", "High", "Low", "Close", "Volume", "Market_Cap", "Ticker", "IndClass_Sector", "IndClass_Industry" FROM stock_data')
-    df = pd.DataFrame(db.fetch_results(), columns=["Date", "Open", "High", "Low", "Close", "Volume", "Market_Cap", "Ticker", "IndClass_Sector", "IndClass_Industry"])
-    # df = pd.read_csv('.\TeamOne\stock_data.csv')
+    db.execute_query('''
+        SELECT "Date", "Open", "High", "Low", "Close", 
+               "Volume", "Market_Cap", "Ticker", 
+               "IndClass_Sector", "IndClass_Industry" 
+        FROM stock_data
+    ''')
+    df = pd.DataFrame(db.fetch_results(), 
+                      columns=["Date", "Open", "High", "Low", "Close", 
+                               "Volume", "Market_Cap", "Ticker", 
+                               "IndClass_Sector", "IndClass_Industry"])
+    
     df = data_preprocessing(df)
     tickers = df['Ticker'].unique()
-    final_df = run_by_ticker(df, tickers, alpha_indices) #compute alpha for each stock
-    print(final_df)
-    # final_df.to_csv("alpha_results.csv", index=False)
-    print("Done.")
+    final_df = run_by_ticker(df, tickers, alpha_indices)
+    
     db.close_connection()
+    return df, final_df
+
+#if __name__ == '__main__':
+ #   df, final_df = generate_alphas()
+  #  print("Alpha DataFrame:\n", final_df.head())
+    # final_df.to_csv("alpha_results.csv", index=False)
+   # print("Done.")
+
+
+
+#if __name__ == '__main__':
+#    alpha_indices = [
+ #       1, 2, 3, 4, 5, 6, 7, 8, 9, 
+  #      10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
+   #     20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 
+    #    30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 
+     #   40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 
+      #  50, 51, 52, 53, 54, 55, 56, 57, 58, 
+       # 60, 61, 62, 63, 64, 65, 66, 68, 
+ #       71, 72, 73, 74, 75, 77, 78, 
+  #      81, 83, 84, 85, 86, 88, 
+   #     92, 94, 95, 96, 98, 99, 101,
+    #]
+    # for later usage
+ #   db = database_utils()
+  #  db.connect()
+   # db.set_schema('datacollection')
+    #db.execute_query('SELECT "Date", "Open", "High", "Low", "Close", "Volume", "Market_Cap", "Ticker", "IndClass_Sector", "IndClass_Industry" FROM stock_data')
+   # df = pd.DataFrame(db.fetch_results(), columns=["Date", "Open", "High", "Low", "Close", "Volume", "Market_Cap", "Ticker", "IndClass_Sector", "IndClass_Industry"])
+    # df = pd.read_csv('.\TeamOne\stock_data.csv')
+    #df = data_preprocessing(df)
+   # tickers = df['Ticker'].unique()
+    #final_df = run_by_ticker(df, tickers, alpha_indices) #compute alpha for each stock
+    #print(final_df)
+    # final_df.to_csv("alpha_results.csv", index=False)
+    #print("Done.")
+    #db.close_connection()
