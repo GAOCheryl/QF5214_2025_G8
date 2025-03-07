@@ -79,9 +79,9 @@ def generate_alphas():
 
 #if __name__ == '__main__':
  #   df, final_df = generate_alphas()
-  #  print("Alpha DataFrame:\n", final_df.head())
-    # final_df.to_csv("alpha_results.csv", index=False)
-   # print("Done.")
+ #   print("Alpha DataFrame:\n", final_df.head())
+#    final_df.to_csv("alpha_results.csv", index=False)
+ #   print("Done.")
 
 
 

@@ -2,11 +2,13 @@ from master import MASTERModel
 import pickle
 import numpy as np
 import time
+from alpha_101.alpha101_generator import generate_alphas
+    
 
 # Please install qlib first before load the data.
 
-universe = 'csi300' # ['csi300','csi800']
-prefix = 'opensource' # ['original','opensource'], which training data are you using
+#universe = 'csi300' # ['csi300','csi800']
+#prefix = 'opensource' # ['original','opensource'], which training data are you using
 train_data_dir = f'data'
 with open(f'{train_data_dir}\{prefix}\{universe}_dl_train.pkl', 'rb') as f:
     dl_train = pickle.load(f)
