@@ -26,14 +26,16 @@ The script `alpha_generator.py` extracts stock data from a PostgreSQL database, 
 | `tickers` | List of unique stock tickers | `list` |
 | `alpha_indices` | List of Alpha 101 indices to compute | `list[int]` |
 
-- `df_to_sql_table(df, type_list, schema, table_name)`: Stores the computed alpha factors into the PostgreSQL database.
+- `generate_alphas(input_schema, input_table_name, save, output_schema, output_table_name, if_return)`: Retrieves stock data, preprocesses it, computes Alpha 101 factors, and optionally saves or returns the results.
 
 | Parameter Name | Description | Type |
 |---------------|-------------|------|
-| `df` | DataFrame to be inserted into the database | `pandas.DataFrame` |
-| `type_list` | List of column data types | `list` |
-| `schema` | Database schema name | `str` |
-| `table_name` | Name of the table where data will be stored | `str` |
+| `input_schema` | DSchema name where the stock data is stored | `str` |
+| `input_table_name` | Name of the table containing stock dat | `str` |
+| `save` | Flag indicating whether to save the results to a database | `bool` |
+| `output_schema` | DSchema name where the stock data is outputed | `str` |
+| `output_table_name` | Name of the table to store computed results | `str` |
+| `if_return` | Flag indicating whether to return the input and computed DataFrames | `bool` |
 
 ### 2.2 utils.py
 The utils.py module provides auxiliary functions for common operations used in Alpha 101 computations, including rolling statistics, ranking, scaling, and time-series transformations.
