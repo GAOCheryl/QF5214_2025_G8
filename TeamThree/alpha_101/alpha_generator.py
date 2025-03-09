@@ -1,6 +1,6 @@
 # generate WorldQuant Alpha101 
 import pandas as pd
-from utils import Alphas
+from .utils import Alphas
 
 import sys
 import os
@@ -86,11 +86,63 @@ def generate_alphas(input_schema = 'datacollection',
     if save:
         new_columns = final_df.columns.to_list()
         db.df_to_sql_table(final_df, ['object', 'string'] + ['float64'] * (len(new_columns) - 2), output_schema, output_table_name)
-    
+        # save processed data
+        col_types = [
+            "object",    # Date (or "string", if you prefer to store as text)
+            "float64",   # Open
+            "float64",   # High
+            "float64",   # Low
+            "float64",   # Close
+            "float64",   # Volume
+            "float64",   # Market_Cap
+            "string",    # Ticker
+            "string",    # IndClass_Sector
+            "string",    # IndClass_Industry
+            "float64",   # Typical_Price
+            "float64",   # Return
+            "float64"    # VWAP_5
+        ]
+        db.df_to_sql_table(df, col_types, "datacollection", "processed_data")
     db.close_connection()
     
     if if_return:
         return df, final_df
+
+
+def get_alpha101_table_from_db():
+
+    db = database_utils()
+    db.connect()
+    # Fetch the input stock_data table.
+    query_input = f'''
+        SELECT *
+        FROM datacollection.processed_data
+    '''
+    db.execute_query(query_input)
+    df = pd.DataFrame(db.fetch_results(), 
+                      columns=["Date", "Open", "High", "Low", "Close", "Volume", "Market_Cap", "Ticker", 
+                               "IndClass_Sector", "IndClass_Industry", "Typical_Price", "Return", "VWAP_5"])
+
+    df["Date"] = (pd.to_datetime(df["Date"]) .dt.strftime("%Y-%m-%d"))
+    
+    # Fetch the alpha101 table.
+    query_alpha = f'''
+        SELECT * 
+        FROM datacollection.alpha101
+    '''
+    db.execute_query(query_alpha)
+
+    final_df = pd.DataFrame(db.fetch_results())
+    final_df.rename(columns={final_df.columns[0]: "Date", final_df.columns[1]: "Ticker"}, inplace=True)
+    final_df["Date"] = pd.to_datetime(final_df["Date"]).dt.strftime("%Y-%m-%d")
+    db.close_connection()
+    
+    return df, final_df
+
+
+
+
+
 
 # if __name__ == '__main__':
 #     generate_alphas()
