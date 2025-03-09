@@ -18,14 +18,14 @@
     - The script runs within a Docker container on Alibaba Cloud ECS.
     - The Docker image is built as described in the Dockerfile.
     - The Docker container is executed using the following shell command:
-      ```sh
-      docker run -it \
-       --name getx_2 \        # Name the container accordingly.
-       -v /root/QF5214_G8_Team1_Config/2/config.ini:/getX/config.ini \        # Mount the host's config.ini file into the container at /getX/config.ini.
-       -v /root/QF5214_G8_Team1_Config/2:/output \        # Mount the host directory to /output in the container for saving output files.
-       crpi-hdkevh0503yezvt4.ap-southeast-1.personal.cr.aliyuncs.com/qf5214_g8t1_getx/qf5214_g8:latest \        # Specify the Docker image to use from the Alibaba Cloud Container Registry.
-       /bin/sh -c "python get_X_text.py && cp /getX/*.csv /output/"        # Run a shell command that executes the Python script and then copies any CSV files from /getX to /output.
-      ```
+    ```sh
+    docker run -it \
+     --name getx_2 \        # Name the container accordingly.
+     -v /root/QF5214_G8_Team1_Config/2/config.ini:/getX/config.ini \        # Mount the host's config.ini file into the container at /getX/config.ini.
+     -v /root/QF5214_G8_Team1_Config/2:/output \        # Mount the host directory to /output in the container for saving output files.
+     crpi-hdkevh0503yezvt4.ap-southeast-1.personal.cr.aliyuncs.com/qf5214_g8t1_getx/qf5214_g8:latest \        # Specify the Docker image to use from the Alibaba Cloud Container Registry.
+     /bin/sh -c "python get_X_text.py && cp /getX/*.csv /output/"        # Run a shell command that executes the Python script and then copies any CSV files from /getX to /output.
+    ```
 - **2.3 tweets_nasdaq100_{x}.csv**
   - Used to temporarily store the script's output (considering that the CSV files are relatively small, we decided to output everything as CSV files first. Once data for all companies has been scraped, the files will be collectively written into the PostgreSQL database).
 
