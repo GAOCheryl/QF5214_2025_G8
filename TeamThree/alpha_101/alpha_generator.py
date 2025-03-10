@@ -28,6 +28,7 @@ def run_by_ticker(df, tickers, alpha_indices):
 
         result_df = pd.DataFrame()
         result_df['Date'] = df_tik['Date']
+        result_df['Ticker'] = tik
         
         for idx in alpha_indices:
             func_name = f"alpha{idx:03d}"  # Format as 'alpha001', 'alpha002', etc.
@@ -39,7 +40,7 @@ def run_by_ticker(df, tickers, alpha_indices):
             else:
                 print(f"Function {func_name} not found in Alphas class.")
 
-        result_df['Ticker'] = tik
+        
         final_df = pd.concat([final_df, result_df], ignore_index=True)
     return final_df
     
@@ -50,16 +51,16 @@ def generate_alphas(input_schema = 'datacollection',
                     output_table_name = 'alpha101',
                     if_return = False):
     alpha_indices = [
-        # 1, 2, 3, 4, 6, 7, 8, 9, 
-        # 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
-        # 20, 21, 22, 23, 24, 25, 26, 28, 29, 
-        # 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 
-        # 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 
-        # 50, 51, 52, 53, 54, 55, 56, 57, 58, 
-        # 60, 61, 62, 63, 64, 65, 66,  
-        # 71, 72, 73, 74, 75, 76, 77, 78, 79,
-        # 81, 82, 83, 84, 85, 87, 88, 89,
-        # 92, 93, 94, 96, 97, 98, 99, 101
+        1, 2, 3, 4, 6, 7, 8, 9, 
+        10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
+        20, 21, 22, 23, 24, 25, 26, 28, 29, 
+        30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 
+        40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 
+        50, 51, 52, 53, 54, 55, 56, 57, 58, 
+        60, 61, 62, 63, 64, 65, 66,  
+        71, 72, 73, 74, 75, 76, 77, 78, 79,
+        81, 82, 83, 84, 85, 87, 88, 89,
+        92, 93, 94, 96, 97, 98, 99, 101
     ]
     
     # alpha_lst1 = [5, 27, 68, 86, 95] # potential error
@@ -94,8 +95,6 @@ def generate_alphas(input_schema = 'datacollection',
     df = data_preprocessing(df)
     tickers = df['Ticker'].unique()
     final_df = run_by_ticker(df, tickers, alpha_indices)
-    
-    print(final_df)
     
     if save:
         new_columns = final_df.columns.to_list()
@@ -155,13 +154,13 @@ def get_alpha101_table_from_db():
 
 
 
-if __name__ == '__main__':
-    generate_alphas(input_schema = 'datacollection',
-                    input_table_name = 'stock_data',
-                    save = False, 
-                    output_schema = 'datacollection',
-                    output_table_name = 'alpha101',
-                    if_return = False)
+# if __name__ == '__main__':
+#     generate_alphas(input_schema = 'datacollection',
+#                     input_table_name = 'stock_data',
+#                     save = True, 
+#                     output_schema = 'datacollection',
+#                     output_table_name = 'alpha101',
+#                     if_return = False)
 #     generate_alphas()
 #     df, final_df = generate_alphas()
 #     print("Alpha DataFrame:\n", final_df.head())
