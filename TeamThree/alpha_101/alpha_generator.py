@@ -62,7 +62,18 @@ def generate_alphas(input_schema = 'datacollection',
     ]
     
     # alpha_lst1 = [5, 27, 68, 86, 95] # potential error
-    # alpha_dict = {'alpha019': 250, 'alpha039': 250,'alpha048': 250,} # with lots of NULL values
+    # alpha_dict = {'alpha019': 254, 'alpha039': 254, 'alpha048': 255,
+    #               'alpha052': 243, 'alpha032': 237, 'alpha037': 203, 'alpha036': 202,
+    #               'alpha094': 85,     
+    #               'alpha078': 66, 
+    #               'alpha043': 39, 'alpha084': 39, 'alpha085': 39,
+    #               'alpha035': 33,
+    #               'alpha045': 24,'alpha017': 23,'alpha001': 22, 
+    #               'alpha007': 19,'alpha022': 19,'alpha025': 19, 'alpha030': 19,  'alpha047': 19
+    #               'alpha092': 18, 
+    #               'alpha073': 17,         
+    #               'alpha008': 15, 'alpha071': 15, 
+    #               } # with lots of NULL values
     # new_alpha_lst = [48, 56, 58, 59, 63]
 
     db = database_utils()
