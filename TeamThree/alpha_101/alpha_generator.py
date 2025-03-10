@@ -62,7 +62,7 @@ def generate_alphas(input_schema = 'datacollection',
     ]
     
     # alpha_lst1 = [5, 27, 68, 86, 95] # potential error
-    # alpha_dict = {'alpha019': 250, } # with lots of NULL values
+    # alpha_dict = {'alpha019': 250, 'alpha039': 250,'alpha048': 250,} # with lots of NULL values
     # new_alpha_lst = [48, 56, 58, 59, 63]
 
     db = database_utils()
@@ -138,9 +138,6 @@ def get_alpha101_table_from_db():
     db.close_connection()
     
     return df, final_df
-
-
-
 
 
 
