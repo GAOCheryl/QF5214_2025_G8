@@ -72,11 +72,11 @@ def generate_alphas(input_schema = 'datacollection',
     #               'alpha035': 33,
     #               'alpha045': 24,'alpha017': 23,'alpha001': 22, 
     #               'alpha007': 19,'alpha022': 19,'alpha025': 19, 'alpha030': 19,  'alpha047': 19
-    #               'alpha092': 18, 
+    #               'alpha076': 18, 'alpha092': 18, 
     #               'alpha073': 17,         
     #               'alpha008': 15, 'alpha071': 15, 
     #               } # with lots of NULL values
-    # new_alpha_lst = [48, 56, 58, 59, 63]
+    # new_alpha_lst = [48, 56, 58, 59, 63, 76, 79, 82, 87, 89, 93, 97]
 
     db = database_utils()
     db.connect()
