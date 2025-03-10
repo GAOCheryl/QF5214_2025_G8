@@ -14,7 +14,7 @@ sys.path.append(parent_dir)
 from alpha_101.alpha_generator import get_alpha101_table_from_db
 from alpha_101.alpha_generator import generate_alphas
 
-# generate alphas, and store in db
+# Call generate_alphas() which returns (df, final_df)
 df, final_df = generate_alphas(input_schema = 'datacollection',
                     input_table_name = 'stock_data',
                     save = True, 
@@ -22,26 +22,14 @@ df, final_df = generate_alphas(input_schema = 'datacollection',
                     output_table_name = 'alpha101',
                     if_return = True)
 
+
 # directly get data from db
 df_all, final_df_all = get_alpha101_table_from_db()
     
 
-#universe = 'csi300' # ['csi300','csi800']
-#prefix = 'opensource' # ['original','opensource'], which training data are you using
-#train_data_dir = f'data'
-#with open(f'{train_data_dir}\{prefix}\{universe}_dl_train.pkl', 'rb') as f:
-    #dl_train = pickle.load(f)
-#predict_data_dir = f'data\opensource'
-#with open(f'{predict_data_dir}\{universe}_dl_valid.pkl', 'rb') as f:
-    #dl_valid = pickle.load(f)
-#with open(f'{predict_data_dir}\{universe}_dl_test.pkl', 'rb') as f:
-    #dl_test = pickle.load(f)
-    
-
 # Merge on "Date" and "Ticker" (adjust join type if needed)
 combined_df = pd.merge(df_all, final_df_all, on=["Date", "Ticker"], how="inner")
-
-# Example of dropping non-numeric columns:
+combined_df.fillna(0, inplace=True)
 combined_df = combined_df.drop(columns=["IndClass_Sector", "IndClass_Industry"])
 
 df_sorted = combined_df.sort_values(by='Date').reset_index(drop=True)
@@ -55,8 +43,10 @@ valid_end = int(n * 0.8)  # 80%
 df_train = df_sorted.iloc[:train_end]
 df_valid = df_sorted.iloc[train_end:valid_end]
 df_test = df_sorted.iloc[valid_end:]
+    
 
 def convert_data_qlibformat(df):
+
     # 1) Ensure the "Date" column is a datetime type
     df["Date"] = pd.to_datetime(df["Date"])
 
@@ -82,49 +72,79 @@ def convert_data_qlibformat(df):
     df_feature = df.drop(columns=["Return"], errors="ignore")
     df_feature.columns = pd.MultiIndex.from_product([["feature"], df_feature.columns])
 
-    # 6) Concatenate features and label columns
+    # 6) Concatenate features and label columns, and fill missing values with 0
     df_qlib = pd.concat([df_feature, df_label], axis=1)
+    df_qlib = df_qlib.fillna(0)
+
+    # ---- New normalization step ----
+    # Extract feature columns (first level "feature")
+    feature_df = df_qlib.loc[:, "feature"]
+    # Compute mean and std for each feature column
+    feature_mean = feature_df.mean()
+    feature_std = feature_df.std()
+    eps = 1e-8  # to avoid division by zero
+
+    # Normalize features: (value - mean) / (std + eps)
+    normalized_feature = (feature_df - feature_mean) / (feature_std + eps)
+    # Replace original feature values with normalized values
+    df_qlib.loc[:, "feature"] = normalized_feature
+    # ---- End normalization step ----
 
     # 7) Determine start and end dates from the datetime level
     start = df_qlib.index.get_level_values("datetime").min()
     end = df_qlib.index.get_level_values("datetime").max()
 
-    # 8) Build TSDataSampler (note: no 'freq' parameter)
-    sampler = TSDataSampler(df_qlib, start, end, step_len=8)
-    
+    # 8) Build TSDataSampler (using fillna_type='ffill+bfill' for reindexing) and post-process any remaining NaNs.
+    sampler = TSDataSampler(df_qlib, start, end, step_len=8, fillna_type='ffill+bfill')
+    sampler.data_arr = np.nan_to_num(sampler.data_arr, nan=0.0)
+
     return sampler
 
+
+# Use the function for training, validation, and test sets:
 dl_train = convert_data_qlibformat(df_train)
 dl_valid = convert_data_qlibformat(df_valid)
 dl_test = convert_data_qlibformat(df_test)
 print("Data Loaded.")
 
+# Save the merged DataFrame tinpuo a pickle file
+with open("training_input.pkl", "wb") as f:
+    pickle.dump(dl_train, f)
+with open("valid_input.pkl", "wb") as f:
+    pickle.dump(dl_valid, f)
+with open("testing_input.pkl", "wb") as f:
+    pickle.dump(dl_test, f)
 
-d_feat = 158
+
+with open(f'training_input.pkl', 'rb') as f:
+    dl_train = pickle.load(f)
+with open(f'valid_input.pkl', 'rb') as f:
+    dl_valid = pickle.load(f)
+with open(f'testing_input.pkl', 'rb') as f:
+    dl_test = pickle.load(f)
+
+
+
+
+d_feat = 9
 d_model = 256
 t_nhead = 4
 s_nhead = 2
 dropout = 0.5
-gate_input_start_index = 158
-gate_input_end_index = 221
+gate_input_start_index = 9
+gate_input_end_index = 96
 
 beta = 5
-
-#if universe == 'csi300':
-    #beta = 5
-#elif universe == 'csi800':
-    #beta = 2
-
 n_epoch = 1
 lr = 1e-5
 GPU = 0
 train_stop_loss_thred = 0.95
 
-
 ic = []
 icir = []
 ric = []
 ricir = []
+
 
 ##Training
 ######################################################################################
@@ -159,14 +179,14 @@ for seed in [0, 1, 2, 3, 4]:
 # Load and Test
 ######################################################################################
 for seed in [0]:
-    param_path = f'model\model_training_{seed}.pkl'
+    param_path = f'model/model_training_{seed}.pkl'
 
     print(f'Model Loaded from {param_path}')
     model = MASTERModel(
             d_feat = d_feat, d_model = d_model, t_nhead = t_nhead, s_nhead = s_nhead, T_dropout_rate=dropout, S_dropout_rate=dropout,
             beta=beta, gate_input_end_index=gate_input_end_index, gate_input_start_index=gate_input_start_index,
             n_epochs=n_epoch, lr = lr, GPU = GPU, seed = seed, train_stop_loss_thred = train_stop_loss_thred,
-            save_path='model/', save_prefix=f'model'
+            save_path='model', save_prefix=f'model_prediction'
         )
     model.load_param(param_path)
     predictions, metrics = model.predict(dl_test)
