@@ -1,26 +1,11 @@
 # Readme 
-This is the official code and supplementary materials for our AAAI-2024 paper: **MASTER: Market-Guided Stock Transformer for Stock Price Forecasting**. [[Paper]](https://ojs.aaai.org/index.php/AAAI/article/view/27767)  [[ArXiv preprint]](https://arxiv.org/abs/2312.15235) 
+This is the official code and supplementary materials for our stock return prediction model. We adopt the original MASTER architecture (Market-Guided Stock Transformer) and make modifications for our new data inputs and preprocessing from AAAI-2024 paper: **MASTER: Market-Guided Stock Transformer for Stock Price Forecasting**. [[Paper]](https://ojs.aaai.org/index.php/AAAI/article/view/27767)  [[ArXiv preprint]](https://arxiv.org/abs/2312.15235) 
 
 MASTER is a stock transformer for stock price forecasting, which models the momentary and cross-time stock correlation and guides feature selection with market information.
 
 ![MASTER framework](framework.png)
 
 Our original experiments were conducted in a complex business codebase developed based on Qlib. The original code is confidential and exhaustive. In order to enable anyone to quickly use MASTER, here we publish our well-processed data and core code. 
-
-## :fire: Important Notice on 2024-12-07
-Our previous published valid & test data are problematic as we mistakenly used the training processors when dumping them out from our codebase. We recently found out this issue that previously published valid & test data per day contains 95% of all stocks, but in our original experiment, we used all stocks. The original datasource and codebase are the company's properties. It is sad that although we tried a lot to publish the dumped data for everyone, we ended up with mistake operations. Now our access has expired and we cannot dump the original correct valid & test data again. 
-
-We try to remedy it with this [opensource data](https://github.com/chenditc/investment_data/releases), and process it again with the Qlib framework. You can now download them from one of the following links (the data files are the same) and seamlessly use them in this lightweight repo. 
-
-- :fire:[Update opensource data][OneDrive link](https://1drv.ms/f/c/652674690cc447e6/Eu8Kxv4xxTFMtDQqTW0IU0UB8rnpjACA5twMi8BA_PfbSA)
-- :fire:[Update opensource data][MEGA link](https://mega.nz/folder/MS8mUTbL#qeVz3KR1-MyXc_uLPtkvTg)
-- :fire:[Update opensource data][Baidu link](https://pan.baidu.com/s/1qmDIepmGY1DVBTGGiipxfA?pwd=pm49). 
-
-Our original codebase implemented a DropExtremeLabel processor that 1) drop 5% extreme labels during training and 2) predict for all stocks on inference. Since the Qlib framework does not own such a processor, we add a few lines in <code>base_model.py/SequenceModel/train_epoch </code> to clumsily perform DropExtremeLabel and CSZcoreNorm during training. You can find comments in the code and read more in the <code> Readme:Preprocessing </code>.
-
-Luckily, for training, you can still choose from the original data or opensource data. The original training data including market information are correctly dumped.Here we attach results with the renewed data and seed 0-4 in <code>model/performance.xlsx</code>. We did not tune on hyperparameters. Since the data source is changed, you may want to tune on beta and the stopping epoch. 
-
-For any questions, please first check on the closed issues, and then open a new one if necessary. We made a lot of efforts to share the outcomings of this research during the years after publication, although most of the the authors had moved on to other researches. Thank you very much for the attention and understanding :smile:
 
 ## Usage
 1. Install dependencies.
@@ -30,11 +15,9 @@ For any questions, please first check on the closed issues, and then open a new 
 2. Install [Qlib](https://github.com/microsoft/qlib). We have minimized the reliance on Qlib, and you can simply install it by
 - <code>pip install pyqlib </code>
 
-3. Download data and unpack it into <code> data/ </code>
+3. Run main.py to start training or evaluation.
 
-4. Run main.py. Depending on which data you want to train on, remember to change the lines in <code> base_model.py/SequenceModel/train_epoch </code>.
-
-5. We provide models trained on the original data or opensource data: <code> model/csi300_original_0.pkl, model/csi800_original_0.pkl, model/csi300_opensource_0.pkl, model/csi800_opensource_0.pkl</code>
+5. Pre-trained models are available in: <code> model/model_training_0.pkl, model/model_training_1.pkl, model/model_training_2.pkl, model/model_training_3.pkl, and model/model_training_4.pkl</code>. You can load these models for evaluation or further training.
 
 
 ## Dataset
