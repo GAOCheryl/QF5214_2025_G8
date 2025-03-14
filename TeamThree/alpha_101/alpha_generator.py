@@ -1,7 +1,7 @@
 # generate WorldQuant Alpha101 
 import pandas as pd
 # from .utils import Alphas #lly
-from utils import Alphas # gxr
+from .utils import Alphas # gxr
 
 import sys
 import os
@@ -148,9 +148,22 @@ def get_alpha101_table_from_db():
     final_df = pd.DataFrame(db.fetch_results())
     final_df.rename(columns={final_df.columns[0]: "Date", final_df.columns[1]: "Ticker"}, inplace=True)
     final_df["Date"] = pd.to_datetime(final_df["Date"]).dt.strftime("%Y-%m-%d")
+
+    # Fetch the market index table.
+    query_index = f'''
+        SELECT * 
+        FROM datacollection.index_data
+    '''
+    db.execute_query(query_index)
+    index_df = pd.DataFrame(db.fetch_results(), 
+                      columns=["Date", "Open", "High", "Low", "Close", "Adj_Close", "Volume", "Ticker", 
+                               "IndexName"])
+
+    index_df["Date"] = (pd.to_datetime(index_df["Date"]) .dt.strftime("%Y-%m-%d"))
+
     db.close_connection()
     
-    return df, final_df
+    return df, final_df, index_df
 
 
 
