@@ -24,15 +24,48 @@ df, final_df = generate_alphas(input_schema = 'datacollection',
 
 
 # directly get data from db
-df_all, final_df_all = get_alpha101_table_from_db()
-    
+df_all, final_df_all, df_index = get_alpha101_table_from_db()
+
+# 1) Drop the "IndexTicker" column if it exists
+df_index = df_index.drop(columns="IndexTicker", errors="ignore")
+
+# 2) Pivot the DataFrame
+df_index_pivot = df_index.pivot(
+    index="Date",                # Each Date becomes a row
+    columns="IndexName",         # Each unique IndexName becomes columns
+    values=["Open", "High", "Low", "Close", "Adj_Close", "Volume"]
+)
+
+# 3) Flatten and rename columns to single-level format "<IndexName>_<Column>"
+df_index_pivot.columns = [
+    f"{col[1]}_{col[0]}"  # col is a tuple like ("Open", "S&P500")
+    for col in df_index_pivot.columns
+]
+
+# 4) Move the 'Date' index back into a column
+df_index_pivot.reset_index(inplace=True)
+
+# Now df_index_pivot has columns like:
+# ['Date', 'S&P500_Open', 'S&P500_High', 'S&P500_Low', 'S&P500_Close', 'S&P500_Adj_Close', 'S&P500_Volume', ...]
 
 # Merge on "Date" and "Ticker" (adjust join type if needed)
-combined_df = pd.merge(df_all, final_df_all, on=["Date", "Ticker"], how="inner")
-combined_df.fillna(0, inplace=True)
-combined_df = combined_df.drop(columns=["IndClass_Sector", "IndClass_Industry"])
+combined_df = pd.merge(df_all, final_df_all, on=["Date", "Ticker"], how="inner")   
 
-df_sorted = combined_df.sort_values(by='Date').reset_index(drop=True)
+# 5) (Optional) Merge with your main DataFrame on 'Date'
+df_merged = pd.merge(
+    combined_df,
+    df_index_pivot,
+    on='Date',    # or how='left'/'right'/'outer' if needed
+    how='left'
+)
+
+df_merged.fillna(0, inplace=True)
+# Example of dropping non-numeric columns:
+df_merged = df_merged.drop(columns=["IndClass_Sector", "IndClass_Industry"])
+
+df_sorted = df_merged.sort_values(by='Date').reset_index(drop=True)
+
+
 
 # Compute indices for splits
 n = len(df_sorted)
@@ -132,13 +165,15 @@ t_nhead = 4
 s_nhead = 2
 dropout = 0.5
 gate_input_start_index = 9
-gate_input_end_index = 96
+gate_input_end_index = 126
 
 beta = 5
-n_epoch = 1
+
+n_epoch = 100
 lr = 1e-5
 GPU = 0
-train_stop_loss_thred = 0.95
+train_stop_loss_thred = 0.01
+
 
 ic = []
 icir = []
