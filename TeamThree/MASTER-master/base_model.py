@@ -36,6 +36,7 @@ class DailyBatchSamplerRandom(Sampler):
         self.data_source = data_source
         self.shuffle = shuffle
         # calculate number of samples in each batch
+        
         self.daily_count = pd.Series(index=self.data_source.get_index()).groupby("datetime").size().values
         self.daily_index = np.roll(np.cumsum(self.daily_count), 1)  # calculate begin index of each batch
         self.daily_index[0] = 0
@@ -108,9 +109,9 @@ class SequenceModel():
             # If you use original data to train, you won't need the following lines because we already drop extreme when we dumped the data.
             # If you use the opensource data to train, use the following lines to drop extreme labels.
             #########################
-            mask, label = drop_extreme(label)
-            feature = feature[mask, :, :]
-            label = zscore(label) # CSZscoreNorm
+            #mask, label = drop_extreme(label)
+            #feature = feature[mask, :, :]
+            #label = zscore(label) # CSZscoreNorm
             #########################
 
             pred = self.model(feature.float())
@@ -171,7 +172,8 @@ class SequenceModel():
         
 
     def predict(self, dl_test):
-        if self.fitted<0:
+        # string cannot be compared with int,add one more condition here
+        if isinstance(self.fitted,(int, float)) and self.fitted<0:
             raise ValueError("model is not fitted yet!")
         else:
             print('Epoch:', self.fitted)
