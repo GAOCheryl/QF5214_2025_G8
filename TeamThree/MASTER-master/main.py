@@ -43,11 +43,17 @@ df_index_pivot.columns = [
     for col in df_index_pivot.columns
 ]
 
+df_index_pivot = df_index_pivot.drop(columns=["Russell 1000_Volume", 
+                                              "Russell 3000_Volume", 
+                                              "Wilshire 5000_Volume"])
+
+
 # 4) Move the 'Date' index back into a column
 df_index_pivot.reset_index(inplace=True)
 
 # Now df_index_pivot has columns like:
 # ['Date', 'S&P500_Open', 'S&P500_High', 'S&P500_Low', 'S&P500_Close', 'S&P500_Adj_Close', 'S&P500_Volume', ...]
+
 
 # Merge on "Date" and "Ticker" (adjust join type if needed)
 combined_df = pd.merge(df_all, final_df_all, on=["Date", "Ticker"], how="inner")   
@@ -80,65 +86,67 @@ df_test = df_sorted.iloc[valid_end:]
     
 
 def convert_data_qlibformat(df):
+    import pandas as pd
+    import numpy as np
+    from qlib.data.dataset import TSDataSampler  # adjust import as needed
 
+    # Create a copy to avoid SettingWithCopyWarning
+    df = df.copy()
+    
     # 1) Ensure the "Date" column is a datetime type
     df["Date"] = pd.to_datetime(df["Date"])
-
-    # 2) Set the index as [Date, Ticker] and rename to ["datetime", "instrument"]
-    df = df.set_index(["Date", "Ticker"])
-    df.index.names = ["datetime", "instrument"]
-
-    # 3) Ensure that the "datetime" level is properly converted and sort the index
-    dt_level = pd.to_datetime(df.index.get_level_values("datetime"))
-    instrument_level = df.index.get_level_values("instrument")
-    df.index = pd.MultiIndex.from_arrays(
-        [dt_level, instrument_level],
-        names=["datetime", "instrument"]
-    )
-    # Sort so that datetime is at position 0 and ordered ascendingly
-    df = df.sort_index(level=["datetime", "instrument"])
-
-    # 4) Separate the "Return" column as the label
+    
+    # 2) Separate label and features BEFORE setting the index
+    #    Retain "Date" and "Ticker" for indexing, but remove them from features.
     df_label = df[["Return"]].copy()
-    df_label.columns = pd.MultiIndex.from_product([["label"], ["Return"]])
+    # Exclude "Date" and "Ticker" along with "Return" from features
+    df_feature = df.drop(columns=["Return", "Date", "Ticker"], errors="ignore")
+    
+    # 3) Normalize feature columns (ensure they are numeric)
+    df_feature = df_feature.apply(pd.to_numeric, errors='coerce')
+    feature_mean = df_feature.mean()
+    feature_std = df_feature.std()
+    eps = 1e-8  # to avoid division by zero
+    normalized_feature = (df_feature - feature_mean) / (feature_std + eps)
+    df_feature = normalized_feature
+    
+    # 4) Now set the index of the original DataFrame using "Date" and "Ticker"
+    #    These columns will be used as the index ("datetime" and "instrument")
+    df_index = df.set_index(["Date", "Ticker"])
+    
+    # 5) Assign the index to both label and feature DataFrames
+    df_feature.index = df_index.index
+    df_label.index = df_index.index
 
-    # 5) The remaining columns are features
-    df_feature = df.drop(columns=["Return"], errors="ignore")
+    # 6) Construct MultiIndex for the columns:
+    #    For features, use top-level "feature"; for the label, use "label"
     df_feature.columns = pd.MultiIndex.from_product([["feature"], df_feature.columns])
-
-    # 6) Concatenate features and label columns, and fill missing values with 0
+    df_label.columns = pd.MultiIndex.from_product([["label"], df_label.columns])
+    
+    # 7) Concatenate features and label columns, and fill missing values with 0
     df_qlib = pd.concat([df_feature, df_label], axis=1)
     df_qlib = df_qlib.fillna(0)
+    
+    # 8) Name the index levels and sort the DataFrame
+    df_qlib.index.names = ["datetime", "instrument"]
+    df_qlib = df_qlib.sort_index(level=["datetime", "instrument"])
 
-    # ---- New normalization step ----
-    # Extract feature columns (first level "feature")
-    feature_df = df_qlib.loc[:, "feature"]
-    # Compute mean and std for each feature column
-    feature_mean = feature_df.mean()
-    feature_std = feature_df.std()
-    eps = 1e-8  # to avoid division by zero
-
-    # Normalize features: (value - mean) / (std + eps)
-    normalized_feature = (feature_df - feature_mean) / (feature_std + eps)
-    # Replace original feature values with normalized values
-    df_qlib.loc[:, "feature"] = normalized_feature
-    # ---- End normalization step ----
-
-    # 7) Determine start and end dates from the datetime level
+    
+    # 9) Determine start and end dates from the datetime index level
     start = df_qlib.index.get_level_values("datetime").min()
     end = df_qlib.index.get_level_values("datetime").max()
-
-    # 8) Build TSDataSampler (using fillna_type='ffill+bfill' for reindexing) and post-process any remaining NaNs.
+    
+    # 10) Build TSDataSampler (using fillna_type='ffill+bfill' for reindexing)
     sampler = TSDataSampler(df_qlib, start, end, step_len=8, fillna_type='ffill+bfill')
     sampler.data_arr = np.nan_to_num(sampler.data_arr, nan=0.0)
-
+    
     return sampler
-
 
 # Use the function for training, validation, and test sets:
 dl_train = convert_data_qlibformat(df_train)
 dl_valid = convert_data_qlibformat(df_valid)
 dl_test = convert_data_qlibformat(df_test)
+
 print("Data Loaded.")
 
 # Save the merged DataFrame tinpuo a pickle file
@@ -166,14 +174,14 @@ t_nhead = 4
 s_nhead = 2
 dropout = 0.5
 gate_input_start_index = 9
-gate_input_end_index = 126
+gate_input_end_index = 123
 
 beta = 5
 
 n_epoch = 100
-lr = 1e-5
+lr = 1e-4
 GPU = 0
-train_stop_loss_thred = 0.01
+train_stop_loss_thred = 0.001
 
 
 ic = []
