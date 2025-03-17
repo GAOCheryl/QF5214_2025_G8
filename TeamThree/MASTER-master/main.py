@@ -15,13 +15,14 @@ from alpha_101.alpha_generator import get_alpha101_table_from_db
 from alpha_101.alpha_generator import generate_alphas
 
 # Call generate_alphas() which returns (df, final_df)
+'''
 df, final_df = generate_alphas(input_schema = 'datacollection',
                     input_table_name = 'stock_data',
                     save = True, 
                     output_schema = 'datacollection',
                     output_table_name = 'alpha101',
                     if_return = True)
-
+'''
 
 # directly get data from db
 df_all, final_df_all, df_index = get_alpha101_table_from_db()
