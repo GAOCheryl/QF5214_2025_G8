@@ -10,5 +10,5 @@ st.markdown("<h1 style='text-align: center;'>From Sentiment to Strategy: Integra
 
 # Display Group Members in smaller italic font
 st.markdown("""
-*Group Members: Gao XuanRong, Hur Sinhaeng, Li LingYan, Liu Yang, Ren ZhiNan, Zhang YiChen, Zhou Zheng, Zhang Leyan*
+*Group Members: Gao XuanRong, Hur Sinhaeng, Li LingYan, Liu Yang, Ren ZhiNan, Zhang YiChen, Zhou Zheng, Zhang Leyan, Lee Jiazhe, Mei Su*
 """, unsafe_allow_html=True)
