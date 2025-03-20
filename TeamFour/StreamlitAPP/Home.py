@@ -12,3 +12,9 @@ st.markdown("<h1 style='text-align: center;'>From Sentiment to Strategy: Integra
 st.markdown("""
 *Group Members: Gao XuanRong, Hur Sinhaeng, Li LingYan, Liu Yang, Ren ZhiNan, Zhang YiChen, Zhou Zheng, Zhang Leyan, Lee Jiazhe, Mei Su*
 """, unsafe_allow_html=True)
+
+# Display Objective
+st.markdown("""
+### Objective
+To extract market sentiment from textual data, quantify it into sentiment factors, and integrate these factors into a multi-factor investment model. We will build a real-time, interactive dashboard that visualizes all relevant data dynamically.
+""")
