@@ -1,7 +1,7 @@
 # QF5214_Group 8
 Group Project of Course QF5214
 
-Members: Gao XuanRong, Hur Sinhaeng, li LingYan, Liu Yang, Ren ZhiNan, Zhang YiChen, Zhou Zheng, Zhang Leyan
+Members: Gao XuanRong, Hur Sinhaeng, Li LingYan, Liu Yang, Ren ZhiNan, Zhang YiChen, Zhou Zheng, Zhang Leyan, Lee Jiazhe, Mei Su
 
 ## Project Title 
 "From Sentiment to Strategy: Integrating NLP-Derived Factors into Quantitative Investment Models"
