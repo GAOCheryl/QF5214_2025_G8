@@ -334,6 +334,7 @@ class SentimentEmotionAnalyzer:
                     continue
                 dist[mapped_lbl]+=score
                 total+=score
+        epsilon = 1e-6
         for emo in self.universal_emotions:
             dist[emo] = dist.get(emo, 0.0) + epsilon
             total += epsilon
