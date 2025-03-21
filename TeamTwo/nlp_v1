@@ -8,7 +8,7 @@ class SentimentEmotionAnalyzer:
     """
     This class provides end-to-end analysis of text, including:
       1) Loading all NLP pipelines (FinBERT + 3 emotion models) only once (in __init__),
-      2) Tokenizing and merging numeric tokens with '%',
+      2) Tokenising and merging numeric tokens with '%',
       3) Classifying intent (Buy/Sell/Hold/Neutral/Spam),
       4) Aggregating emotions from multiple models into a universal set,
       5) Computing overall emotion confidence via inter-model agreement,
@@ -17,9 +17,9 @@ class SentimentEmotionAnalyzer:
 
     def __init__(self, k_intent=0.5):
         """
-        Step 1: Initialize and load all resources.
+        Step 1: Initialise and load all resources.
 
-        - Load spaCy for tokenization.
+        - Load spaCy for tokenisation.
         - Set an intent confidence scaling constant (k_intent).
         - Define intent keywords and universal emotion sets with mapping dictionaries.
         - Load each pipeline once (FinBERT for financial sentiment, plus 3 emotion models),
@@ -68,11 +68,9 @@ class SentimentEmotionAnalyzer:
         }
         self.mapping_model2 = {
             "joy": "joy",
-            "optimism": "joy",
             "surprise": "surprise",
             "fear": "fear",
             "anger": "anger",
-            "pessimism": "sadness",
             "disgust": "disgust",
             "sadness": "sadness"
         }
@@ -108,18 +106,7 @@ class SentimentEmotionAnalyzer:
             top_k=None
         )
 
-        # (C) Model 2: cardiffnlp/twitter-roberta-base-emotion-multilabel-latest
-        model_name2 = "cardiffnlp/twitter-roberta-base-emotion-multilabel-latest"
-        tokenizer2 = AutoTokenizer.from_pretrained(model_name2)
-        model2 = AutoModelForSequenceClassification.from_pretrained(model_name2)
-        self.robertaEmotionMultilabel_pipeline = pipeline(
-            "text-classification",
-            model=model2,
-            tokenizer=tokenizer2,
-            top_k=None
-        )
-
-        # (D) Model 3: j-hartmann/emotion-english-distilroberta-base
+        # (C) Model 2: j-hartmann/emotion-english-distilroberta-base
         model_name3 = "j-hartmann/emotion-english-distilroberta-base"
         tokenizer3 = AutoTokenizer.from_pretrained(model_name3)
         model3 = AutoModelForSequenceClassification.from_pretrained(model_name3)
@@ -127,6 +114,17 @@ class SentimentEmotionAnalyzer:
             "text-classification",
             model=model3,
             tokenizer=tokenizer3,
+            top_k=None
+        )
+
+        # (D) Model 3: bhadresh-savani/distilbert-base-uncased-emotion
+        model_name4 = "bhadresh-savani/distilbert-base-uncased-emotion"
+        tokenizer4 = AutoTokenizer.from_pretrained(model_name4)
+        model4 = AutoModelForSequenceClassification.from_pretrained(model_name4)
+        self.bhadresh_pipeline = pipeline(
+            "text-classification",
+            model=model4,
+            tokenizer=tokenizer4,
             top_k=None
         )
 
@@ -338,7 +336,7 @@ class SentimentEmotionAnalyzer:
                 dist[e]/=total
         return dist
 
-    def aggregate_emotions(self, text, weights=(1/5,3/10,1/2)):
+    def aggregate_emotions(self, text, weights=(2/10,3/10,1/2)):
         """
         Step 6b: 
         Aggregates emotion outputs from the three emotion models.
@@ -350,11 +348,14 @@ class SentimentEmotionAnalyzer:
           FinalDist(e) = (w1*Dist1(e) + w2*Dist2(e) + w3*Dist3(e)) / (w1+w2+w3)
         Returns a dictionary over universal_emotions.
         """
+        # Model 1 distribution from michellejieli
         raw1=self.michellejieli_pipeline(text)[0]
         dist1=self.map_emotion_distribution(raw1,self.mapping_model1)
-        raw2=self.robertaEmotionMultilabel_pipeline(text)[0]
+        # Model 2 distribution from j-hartmann
+        raw2=self.jhartmannEmotion_pipeline(text)[0]
         dist2=self.map_emotion_distribution(raw2,self.mapping_model2)
-        raw3=self.jhartmannEmotion_pipeline(text)[0]
+        # Model 3 distribution from bhadresh-savani
+        raw3=self.bhadresh_pipeline(text)[0]
         dist3=self.map_emotion_distribution(raw3,self.mapping_model3)
 
         final_dist={}
@@ -387,22 +388,22 @@ class SentimentEmotionAnalyzer:
         dist_dict=self.map_emotion_distribution(raw,self.mapping_model1)
         return self.dict_to_list(dist_dict)
 
-    def get_distribution_cardiff_multilabel_list(self, text):
+    def get_distribution_jhartmann_list(self, text):
         """
         Step 6c:
         Return Model2 distribution as a LIST for computing cosine similarity.
         """
-        raw=self.robertaEmotionMultilabel_pipeline(text)[0]
-        dist_dict=self.map_emotion_distribution(raw,self.mapping_model2)
-        return self.dict_to_list(dist_dict)
-
-    def get_distribution_jhartmann_list(self, text):
-        """
-        Step 6c:
-        Return Model3 distribution as a LIST for computing cosine similarity.
-        """
         raw=self.jhartmannEmotion_pipeline(text)[0]
         dist_dict=self.map_emotion_distribution(raw,self.mapping_model3)
+        return self.dict_to_list(dist_dict)
+
+    def get_distribution_bhadresh_list(self, text):
+        """
+        Step 6c:
+        Return Model 3 distribution as a LIST for computing cosine similarity.
+        """
+        raw = self.bhadresh_pipeline(text)[0]
+        dist_dict = self.map_emotion_distribution(raw, self.mapping_model4)
         return self.dict_to_list(dist_dict)
 
     def cosine_similarity(self, vec1, vec2):
@@ -424,8 +425,8 @@ class SentimentEmotionAnalyzer:
         among the 3 model distributions (converted to lists).
         """
         d1=self.get_distribution_michellejieli_list(text)
-        d2=self.get_distribution_cardiff_multilabel_list(text)
-        d3=self.get_distribution_jhartmann_list(text)
+        d2=self.get_distribution_jhartmann_list(text)
+        d3=self.get_distribution_bhadresh_list(text)
         sim12=self.cosine_similarity(d1,d2)
         sim13=self.cosine_similarity(d1,d3)
         sim23=self.cosine_similarity(d2,d3)
@@ -439,7 +440,7 @@ class SentimentEmotionAnalyzer:
           - Runs FinBERT for financial sentiment,
           - Aggregates emotion distribution and computes overall emotion confidence
           - Classifies intent with confidence
-          - Prints all results.
+          - Prints all results
         """
         text = self.fix_punctuation_spacing(text)
         print(f"\n\033[1mTweet:\033[0m {text}")
@@ -451,7 +452,8 @@ class SentimentEmotionAnalyzer:
             print(f"  {result['label']}: {result['score']:.4f}")
 
         # 2a. Aggregated Emotions
-        agg_emotions=self.aggregate_emotions(text, weights=(1/3,1/3,1/3))
+        w1, w2, w3 = (0.2, 0.3, 0.4)
+        agg_emotions=self.aggregate_emotions(text, weights=(w1, w2, w3))
         print("\n\033[1mAggregated Emotion Distribution:\033[0m")
         for emo in self.universal_emotions:
             print(f"  {emo}: {agg_emotions[emo]:.4f}")
