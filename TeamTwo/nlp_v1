@@ -343,7 +343,7 @@ class SentimentEmotionAnalyzer:
                 dist[e]/=total
         return dist
 
-    def aggregate_emotions(self, text, weights=(2/10,3/10,1/2)):
+    def aggregate_emotions(self, text, weights=(0.2,0.4,0.4)): #optimised weights
         """
         Step 6b: 
         Aggregates emotion outputs from the three emotion models.
@@ -472,7 +472,7 @@ class SentimentEmotionAnalyzer:
             print(f"  {result['label']}: {result['score']:.4f}")
 
         # 2a. Aggregated Emotions
-        w1, w2, w3 = (0.2, 0.3, 0.4)
+        w1, w2, w3 = (0.2, 0.4, 0.4)
         agg_emotions=self.aggregate_emotions(text, weights=(w1, w2, w3))
         print("\n\033[1mAggregated Emotion Distribution:\033[0m")
         for emo in self.universal_emotions:
