@@ -19,7 +19,7 @@ st.markdown("""
 
 <h4 style='text-align: center; color: #333;'>📄 Project Report</h4>
 <p style='text-align: center; font-size: 16px;'>
-    <a href='https://your-report-link.com' target='_blank' style='text-decoration: none; color: #1a73e8;'>
+    <a href='https://www.overleaf.com/project/67dfb3b0710097f9401b9ddd' target='_blank' style='text-decoration: none; color: #1a73e8;'>
         Click here to view our full project report
     </a>
 </p>

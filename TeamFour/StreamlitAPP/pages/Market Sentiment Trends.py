@@ -3,6 +3,7 @@ import plotly.express as px
 import pandas as pd
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Page Config
 st.set_page_config(page_title="Market Sentiment Trends", layout="wide")
@@ -17,37 +18,58 @@ nasdaq_companies = [
 # Dropdown to select company
 selected_company = st.selectbox("Select a Company", nasdaq_companies)
 
-# Simulate sentiment data for each company (in a real app, you'd load actual data)
+# Generate company-specific sentiment data (mocked with unique seeds)
+company_seed = abs(hash(selected_company)) % (2**32)
+np.random.seed(company_seed)
 sentiment_data = {
     "Time": ["T1", "T2", "T3", "T4", "T5"],
-    "Joy": [0.4, 0.5, 0.6, 0.7, 0.8],
-    "Optimism": [0.6, 0.7, 0.75, 0.8, 0.85],
-    "Anger": [0.2, 0.3, 0.2, 0.25, 0.3],
-    "Sadness": [0.1, 0.15, 0.2, 0.18, 0.22],
-    "Fear": [0.05, 0.08, 0.1, 0.12, 0.15]
+    "Joy": np.random.uniform(0.3, 0.9, 5),
+    "Optimism": np.random.uniform(0.4, 0.95, 5),
+    "Anger": np.random.uniform(0.1, 0.4, 5),
+    "Sadness": np.random.uniform(0.1, 0.3, 5),
+    "Fear": np.random.uniform(0.05, 0.25, 5)
 }
 df_sentiment = pd.DataFrame(sentiment_data)
 
 df_melted = df_sentiment.melt(id_vars=["Time"], var_name="Sentiment", value_name="Score")
 
-# Interactive Line Chart (Minimalist Theme)
+# Interactive Line Chart (Pastel Color Theme from Page 3)
 st.subheader(f"Sentiment Trends Over Time: {selected_company}")
-fig = px.line(df_melted, x="Time", y="Score", color="Sentiment",
-              markers=True,
-              template="simple_white",
-              color_discrete_map={"Joy": "#4682B4", "Optimism": "#1E90FF", "Anger": "#DC143C", "Sadness": "#87CEFA", "Fear": "#FF4500"})
+fig = px.line(
+    df_melted, 
+    x="Time", y="Score", color="Sentiment",
+    markers=True,
+    template="simple_white",
+    color_discrete_map={
+        "Joy": "#6495ED",
+        "Optimism": "#ADD8E6",
+        "Anger": "#F4C2C2",
+        "Sadness": "#D8BFD8",
+        "Fear": "#D2691E"
+    }
+)
 fig.update_layout(yaxis_title="Sentiment Score", xaxis_title="Time")
 st.plotly_chart(fig, use_container_width=True)
 
-# Word Cloud for Financial News Topics (mocked per company)
-st.subheader(f"Financial News Topic Frequency: {selected_company}")
-word_freq = {
-    "Tech Stocks": 50, "Inflation": 40, "Federal Reserve": 35, "Interest Rates": 30,
-    "Oil Prices": 25, "Recession": 22, "Earnings": 20, "GDP": 18, "Crypto": 15, "Unemployment": 12
-}
-wordcloud = WordCloud(width=800, height=400, background_color="white").generate_from_frequencies(word_freq)
+# Generate word frequencies uniquely for each company
+topics = ["Tech Stocks", "Inflation", "Federal Reserve", "Interest Rates", "Oil Prices", "Recession", "Earnings", "GDP", "Crypto", "Unemployment"]
+np.random.seed(company_seed + 1)
+frequencies = np.random.randint(10, 60, size=len(topics))
+word_freq = dict(zip(topics, frequencies))
+
+# Word Cloud in pastel color theme
+def pastel_color_func(*args, **kwargs):
+    pastel_colors = ["#AEC6CF", "#FFDAB9", "#CBAACB", "#FFB347", "#BFD8B8", "#F4C2C2", "#F0E68C"]
+    return np.random.choice(pastel_colors)
+
+wordcloud = WordCloud(
+    width=800, height=400,
+    background_color="white",
+    color_func=pastel_color_func
+).generate_from_frequencies(word_freq)
 
 # Display Word Cloud
+st.subheader(f"Financial News Topic Frequency: {selected_company}")
 fig, ax = plt.subplots(figsize=(10, 5))
 ax.imshow(wordcloud, interpolation="bilinear")
 ax.axis("off")
