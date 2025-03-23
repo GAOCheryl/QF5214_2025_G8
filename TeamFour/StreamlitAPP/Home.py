@@ -13,8 +13,16 @@ st.markdown("""
 *Group Members: Gao XuanRong, Hur Sinhaeng, Li LingYan, Liu Yang, Ren ZhiNan, Zhang YiChen, Zhou Zheng, Zhang Leyan, Lee Jiazhe, Mei Su*
 """, unsafe_allow_html=True)
 
-# Display Objective
+# Report Link Section (replacing Objective)
 st.markdown("""
-### Objective
-To extract market sentiment from textual data, quantify it into sentiment factors, and integrate these factors into a multi-factor investment model. We will build a real-time, interactive dashboard that visualizes all relevant data dynamically.
-""")
+<hr style='border: 1px solid #ccc; margin-top: 30px; margin-bottom: 10px;'>
+
+<h4 style='text-align: center; color: #333;'>📄 Project Report</h4>
+<p style='text-align: center; font-size: 16px;'>
+    <a href='https://your-report-link.com' target='_blank' style='text-decoration: none; color: #1a73e8;'>
+        Click here to view our full project report
+    </a>
+</p>
+
+<hr style='border: 1px solid #ccc; margin-top: 10px;'>
+""", unsafe_allow_html=True)
