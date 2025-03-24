@@ -55,11 +55,11 @@ df_index_pivot.reset_index(inplace=True)
 
 
 # Merge on "Date" and "Ticker" (adjust join type if needed)
-combined_df = pd.merge(df_all, final_df_all, on=["Date", "Ticker"], how="inner")   
+# combined_df = pd.merge(df_all, final_df_all, on=["Date", "Ticker"], how="inner")   
 
 # 5) (Optional) Merge with your main DataFrame on 'Date'
 df_merged = pd.merge(
-    combined_df,
+    df_all,# combined_df,
     df_index_pivot,
     on='Date',    # or how='left'/'right'/'outer' if needed
     how='left'
@@ -176,7 +176,7 @@ t_nhead = 4
 s_nhead = 2
 dropout = 0.5
 gate_input_start_index = 9
-gate_input_end_index = # 123
+gate_input_end_index = 123-88 # remove alpha101
 
 beta = 5
 
@@ -194,7 +194,7 @@ ricir = []
 
 ##Training
 ######################################################################################
-for seed in [0, 1, 2, 3, 4]:
+for seed in [0]: # , 1, 2, 3, 4
     model = MASTERModel(
         d_feat = d_feat, d_model = d_model, t_nhead = t_nhead, s_nhead = s_nhead, T_dropout_rate=dropout, S_dropout_rate=dropout,
         beta=beta, gate_input_end_index=gate_input_end_index, gate_input_start_index=gate_input_start_index,
