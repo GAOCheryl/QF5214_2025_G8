@@ -527,6 +527,7 @@ columns = [
 results = [analyzer.nlp(text) for text in df["Text"].astype(str)]
 
 df[columns] = results
+df = df[df["Emotion Confidence"] >= 0.5]
 
 aggregated_df = df.groupby(["Company", "Date"]).agg({
     "Positive": "mean", "Negative": "mean", "Neutral": "mean",
@@ -578,6 +579,7 @@ columns = [
 ]
 results = [analyzer.nlp(text) for text in df["text"].astype(str)]
 df[columns] = results
+df = df[df["Emotion Confidence"] >= 0.5]
 
 aggregated_df = df.groupby(["company", "Date"]).agg({
     "Positive": "mean", "Negative": "mean", "Neutral": "mean",
@@ -638,6 +640,7 @@ def run_daily_sentiment_analysis():
     ]
     results = [analyzer.nlp(text) for text in df["text"].astype(str)]
     df[columns] = results
+    df = df[df["Emotion Confidence"] >= 0.5]
 
     aggregated_df = df.groupby(["company", "Date"]).agg({
         "Positive": "mean", "Negative": "mean", "Neutral": "mean",
