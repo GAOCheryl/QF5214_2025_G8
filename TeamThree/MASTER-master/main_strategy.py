@@ -92,6 +92,9 @@ def convert_data_qlibformat(df):
     # Create a copy to avoid SettingWithCopyWarning
     df = df.copy()
     
+    # remove rows with missing "Return" values
+    df.dropna(subset=['Return'], inplace=True)
+    
     # 1) Ensure the "Date" column is a datetime type
     df["Date"] = pd.to_datetime(df["Date"])
     
@@ -173,7 +176,7 @@ t_nhead = 4
 s_nhead = 2
 dropout = 0.5
 gate_input_start_index = 9
-gate_input_end_index = 123
+gate_input_end_index = # 123
 
 beta = 5
 
@@ -277,116 +280,3 @@ print("RICIR: {:.4f} pm {:.4f}".format(np.mean(ricir), np.std(ricir)))
 
 ###### 3
 print(df_predictions.head())
-
-# Strategy
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-
-# Copy the dataset to avoid modifying the original data
-df = df_predictions.copy()
-
-# Market Cap Weighted Trading Strategy
-#
-# This strategy selects the top N stocks each day based on the highest Predicted_Return.
-# The selected stocks are weighted by their Market_Cap to determine portfolio allocation.
-
-
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-
-# Copy the dataset to avoid modifying the original data
-df = df_predictions.copy()
-
-# Selection parameter
-TOP_N = 5  # Number of top stocks selected daily
-INITIAL_CAPITAL = 1_000_000  # Initial portfolio value in cash
-TRADING_COST_RATE = 0.001  # 0.1% trading cost per transaction
-
-def TopN(df):
-    '''
-    Strategy Overview:
-        1. Daily rebalancing: Selects top N stocks (configurable TOP_N) each day based on highest predicted returns
-        2. Market-cap weighting: Allocates capital proportionally to selected stocks' market capitalizations
-        3. Realistic execution: 
-            - Calculates position sizes using daily closing prices
-            - Applies trading costs (0.1% per trade) for position changes
-            - Tracks portfolio value with compounding returns
-        4. Key mechanics:
-            - Maintains daily position tracking to calculate turnover
-            - Uses actual returns (not predictions) for performance calculation
-            - Automatically handles missing positions as zero-weight allocations
-        5. Output: Calculates cumulative returns, Sharpe ratio, and max drawdown
-    '''
-    # Ensure data is sorted by date
-    df = df.sort_values(by=['Date'])
-    unique_dates = df['Date'].unique()
-    portfolio_value = INITIAL_CAPITAL  # Track portfolio value
-    portfolio_returns = []
-    prev_positions = {}  # Store previous day's holdings
-    
-    for date in unique_dates:
-        daily_data = df[df['Date'] == date]
-        
-        # Select top N stocks based on Predicted_Return
-        top_stocks = daily_data.nlargest(TOP_N, 'Predicted_Return')
-        tickers = top_stocks['Ticker'].values
-        prices = top_stocks['Price'].values
-        market_caps = top_stocks['Market_Cap'].values
-        
-        # Compute market cap weighted allocation
-        weights = market_caps / np.sum(market_caps)
-        allocation = portfolio_value * weights  # Allocate capital based on weight
-        new_positions = {ticker: alloc / price for ticker, alloc, price in zip(tickers, allocation, prices)}
-        
-        # Compute trading cost
-        trading_cost = 0
-        for ticker, new_shares in new_positions.items():
-            prev_shares = prev_positions.get(ticker, 0)
-            trading_cost += abs(new_shares - prev_shares) * prices[list(tickers).index(ticker)] * TRADING_COST_RATE
-        
-        # Compute portfolio return based on price changes
-        actual_returns = top_stocks['Actual_Return'].values
-        portfolio_return = np.sum(weights * actual_returns)
-        
-        # Update portfolio value
-        portfolio_value *= (1 + portfolio_return)
-        portfolio_value -= trading_cost  # Deduct trading cost
-        prev_positions = new_positions  # Update holdings
-        
-        portfolio_returns.append(portfolio_value)
-    
-    # Convert results to DataFrame
-    results = pd.DataFrame({'Date': unique_dates, 'Portfolio_Value': portfolio_returns})
-    results['Cumulative_Return'] = results['Portfolio_Value'] / INITIAL_CAPITAL
-    
-    return results
-
-# Run backtest
-results = TopN(df)
-
-# Plot cumulative return
-plt.figure(figsize=(12, 6))
-plt.plot(results['Date'], results['Cumulative_Return'], label='Market Cap Weighted Portfolio', color='b')
-plt.xlabel('Date')
-plt.ylabel('Cumulative Return')
-plt.title('Market Cap Weighted Trading Strategy')
-plt.legend()
-plt.xticks(rotation=45)
-plt.grid()
-plt.show()
-
-# Compute performance metrics
-risk_free_rate = 0.04 / 252  
-portfolio_daily_returns = results['Cumulative_Return'].pct_change().dropna()
-excess_returns = portfolio_daily_returns - risk_free_rate
-sharpe_ratio = (excess_returns.mean() / excess_returns.std()) * np.sqrt(252)
-
-max_drawdown = (results['Cumulative_Return'] / results['Cumulative_Return'].cummax() - 1).min()
-
-print(f"Sharpe Ratio: {sharpe_ratio:.2f}")
-print(f"Max Drawdown: {max_drawdown:.2%}")
-
-######
-
