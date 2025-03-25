@@ -316,6 +316,48 @@ class SentimentEmotionAnalyzer:
             label_str=" and ".join(chosen_intent)
             return (label_str,confidence)
 
+    def hybrid_classify_intent(self, text, k=0.5, sentiment_threshold=0.3, override_multiplier=1.5):
+        """
+        Step 5c: 
+        Hybrid approach to classify financial intent by combining:
+          A) The rule-based intent classification (classify_intent)
+          B) FinBERT sentiment-based mapping (p(positive)-p(negative))
+         If the rule-based intent and FinBERT-based intent agree, return that intent with an averaged confidence.
+             If they disagree, and if FinBERT’s absolute sentiment_index is greater than 
+             sentiment_threshold * override_multiplier, then override the rule-based decision.
+             Otherwise, use the rule-based result.
+        """
+        # Compute rule-based intent and confidence
+        rule_intent, rule_conf = self.classify_intent(text, k=k)
+        
+        # 2. Get FinBERT sentiment output
+        finbert_output = self.finbert_pipeline(text)
+        finbert_scores = {item["label"].lower(): item["score"] for item in finbert_output[0]}
+        pos = finbert_scores.get("positive", 0.0)
+        neg = finbert_scores.get("negative", 0.0)
+        
+        # 3. Compute sentiment index and map to intent
+        sentiment_index = pos - neg
+        fin_conf = abs(sentiment_index)  # confidence proxy from FinBERT
+        
+        if sentiment_index > sentiment_threshold:
+            fin_intent = "buy"
+        elif sentiment_index < -sentiment_threshold:
+            fin_intent = "sell"
+        else:
+            fin_intent = "neutral"
+        
+        # Combine the two approaches.
+        if rule_intent == fin_intent:
+            final_conf = (rule_conf + fin_conf) / 2.0
+            return rule_intent, final_conf
+        else:
+            # If FinBERT's signal is strong > 1.5*threshold, override rule-based decision.
+            if fin_conf >= sentiment_threshold * override_multiplier:
+                return fin_intent, fin_conf
+            else:
+                return rule_intent, rule_conf
+
     def map_emotion_distribution(self, raw_results, mapping):
         """
         Step 6a: Convert raw pipeline output (list of dicts with 'label','score')
@@ -481,7 +523,7 @@ class SentimentEmotionAnalyzer:
         print(f"(confidence: {emotion_conf:.4f})")
 
         # 3. Intent
-        intent_label,intent_conf=self.classify_intent(text, k=self.k_intent)
+        intent_label,intent_conf=self.hybrid_classify_intent(text, k=self.k_intent, sentiment_threshold=0.3, override_multiplier=1.5)
         print(f"\n\033[1mIntent-based Sentiment:\033[0m {intent_label}")
         print(f"(confidence: {intent_conf:.4f})")
 
