@@ -28,3 +28,14 @@ all_data = []
 # Timestamp for tracking the run
 start_time = datetime.now()
 print("🕒 Data extraction started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
+
+# Fetch tweets for each ticker
+for ticker in tickers:
+    print(f"\n🔍 Fetching tweets for ${ticker}")
+    
+    query = f"${ticker} lang:en"
+    params = {
+        "query": query,
+        "queryType": "Latest",
+        "cursor": ""
+    }
