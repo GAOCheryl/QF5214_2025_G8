@@ -24,3 +24,7 @@ tickers = [
 # Number of tweets per ticker
 max_tweets = 50
 all_data = []
+
+# Timestamp for tracking the run
+start_time = datetime.now()
+print("🕒 Data extraction started at:", start_time.strftime("%Y-%m-%d %H:%M:%S"))
