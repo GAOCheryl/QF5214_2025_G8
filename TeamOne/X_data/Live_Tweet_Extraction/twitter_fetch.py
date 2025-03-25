@@ -43,3 +43,4 @@ for ticker in tickers:
     ticker_tweets = []
     page_number = 1
     pbar = tqdm(total=max_tweets, desc=f"Collecting ${ticker}", unit="tweet", dynamic_ncols=True)
+
