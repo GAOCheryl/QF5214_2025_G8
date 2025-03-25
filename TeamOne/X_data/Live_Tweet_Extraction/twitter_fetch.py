@@ -4,7 +4,7 @@ from tqdm import tqdm
 from datetime import datetime
 import psycopg2
 
-print("🚀 All comapnies 50 tweets Final")
+print("49 Companies and 40 tweets per extraction")
 
 # Twitter API config
 API_KEY = "93af433a8ff843819d702acbfadcc895"
@@ -22,7 +22,7 @@ tickers = [
 ]
 
 # Number of tweets per ticker
-max_tweets = 50
+max_tweets = 40
 all_data = []
 
 # Timestamp for tracking the run
