@@ -9,7 +9,7 @@ class SentimentEmotionAnalyzer:
     This class provides end-to-end analysis of text, including:
       1) Loading all NLP pipelines (FinBERT + 3 emotion models) only once (in __init__),
       2) Tokenising and merging numeric tokens with '%',
-      3) Classifying intent (Buy/Sell/Hold/Neutral/Spam),
+      3) Classifying intent (Buy/Sell/Neutral),
       4) Aggregating emotions from multiple models into a universal set,
       5) Computing overall emotion confidence via inter-model agreement,
       6) Printing results (financial sentiment, emotion distribution, confidence, intent).
@@ -35,26 +35,12 @@ class SentimentEmotionAnalyzer:
         self.intent_keywords = {
             "Buy": [
                 "buy", "accumulate", "add", "long", "purchase", "invest", "acquire", "win", "dip",
-                "snap", "enter", "load", "bet", "pick", "collect", "capitalise", "dca", "moon"
-            ],
+                "snap", "enter", "load", "bet", "pick", "collect", "capitalise", "dca", "moon"],
             "Sell": [
                 "sell", "dump", "short", "liquidate", "dispose", "offload", "unload", "low",
-                "exit", "cash", "divest", "cut", "flip", "unwind", "loss", "lose", "peak"
-            ],
-            "Hold": [
-                "hold", "keep", "retain", "maintain", "stay", "remain", "observe"
-            ],
+                "exit", "cash", "divest", "cut", "flip", "unwind", "loss", "lose", "peak"],
             "Neutral": [
-                "question", "news", "update", "inquire", "info", "ask", "rumor",
-                "hearing", "report", "opinion", "view", "insight", "thoughts", "feedback",
-                "query", "inquiry"
-            ],
-            "Spam": [
-                "promotion", "advertisement", "sponsored", "promo", "ad", "click",
-                "paid", "marketing", "endorsement", "commercial", "sponsor", "brand", "partnership",
-                "subscribe", "follow"
-            ]
-        }
+                "hold", "keep", "retain", "maintain", "stay", "remain", "observe"]}
 
         # 1.4) Define universal emotion set and mappings
         self.universal_emotions = ["surprise", "joy", "anger", "fear", "sadness", "disgust"]
@@ -216,42 +202,15 @@ class SentimentEmotionAnalyzer:
     def resolve_ties(self, votes):
         """
         Step 5a: Tie-resolution logic with special cases:
-          1. If "Spam" is among the top => return "Spam".
-          2. If exactly (Buy,Hold) => ["Buy","Hold"].
-          3. If exactly (Sell,Hold) => ["Sell","Hold"].
-          4. If exactly (Buy,Hold,Neutral) => ["Buy","Hold"].
-          5. If exactly (Sell,Hold,Neutral) => ["Sell","Hold"].
-          6. If tie includes (Buy,Sell) => "Neutral".
-          7. If tie includes (Buy,Neutral) => "Buy".
-          8. If tie includes (Sell,Neutral) => "Sell".
-          9. If tie includes (Hold,Neutral) => "Hold".
-          10. If 3+ categories tie in any other combination => "Neutral".
-          11. If single => that single category.
+          1. If tie includes (Buy,Sell) => "Neutral".
+          2. If single highest => that single category.
         """
-        max_vote=max(votes.values())
-        top_cats=[cat for cat,v in votes.items() if v==max_vote]
-        top_set=set(top_cats)
-        if "Spam" in top_set:
-            return "Spam"
-        if top_set=={"Buy","Hold"}:
-            return ["Buy","Hold"]
-        if top_set=={"Sell","Hold"}:
-            return ["Sell","Hold"]
-        if top_set=={"Buy","Hold","Neutral"}:
-            return ["Buy","Hold"]
-        if top_set=={"Sell","Hold","Neutral"}:
-            return ["Sell","Hold"]
+        max_vote = max(votes.values())
+        top_cats = [cat for cat, v in votes.items() if v == max_vote]
+        top_set = set(top_cats)
         if "Buy" in top_set and "Sell" in top_set:
             return "Neutral"
-        if "Buy" in top_set and "Neutral" in top_set:
-            return "Buy"
-        if "Sell" in top_set and "Neutral" in top_set:
-            return "Sell"
-        if "Hold" in top_set and "Neutral" in top_set:
-            return "Hold"
-        if len(top_set)>=3:
-            return "Neutral"
-        if len(top_set)==1:
+        if len(top_set) == 1:
             return top_set.pop()
         return "Neutral"
 
@@ -323,20 +282,19 @@ class SentimentEmotionAnalyzer:
           A) The rule-based intent classification (classify_intent)
           B) FinBERT sentiment-based mapping (p(positive)-p(negative))
          If the rule-based intent and FinBERT-based intent agree, return that intent with an averaged confidence.
-             If they disagree, and if FinBERT’s absolute sentiment_index is greater than 
-             sentiment_threshold * override_multiplier, then override the rule-based decision.
-             Otherwise, use the rule-based result.
+             If they disagree, use FinBERT's result too (since FinBERT is more robust)
+             but reduce its confidence by the factor override_factor.
         """
         # Compute rule-based intent and confidence
         rule_intent, rule_conf = self.classify_intent(text, k=k)
         
-        # 2. Get FinBERT sentiment output
+        # Get FinBERT sentiment output
         finbert_output = self.finbert_pipeline(text)
         finbert_scores = {item["label"].lower(): item["score"] for item in finbert_output[0]}
         pos = finbert_scores.get("positive", 0.0)
         neg = finbert_scores.get("negative", 0.0)
         
-        # 3. Compute sentiment index and map to intent
+        # Compute sentiment index and map to intent
         sentiment_index = pos - neg
         fin_conf = abs(sentiment_index)  # confidence proxy from FinBERT
         
@@ -347,16 +305,16 @@ class SentimentEmotionAnalyzer:
         else:
             fin_intent = "neutral"
         
-        # Combine the two approaches.
+        # Combine the two approaches
         if rule_intent == fin_intent:
             final_conf = (rule_conf + fin_conf) / 2.0
             return rule_intent, final_conf
         else:
-            # If FinBERT's signal is strong > 1.5*threshold, override rule-based decision.
-            if fin_conf >= sentiment_threshold * override_multiplier:
-                return fin_intent, fin_conf
-            else:
-                return rule_intent, rule_conf
+            # Disagreement: Use FinBERT's decision but reduce its confidence
+            final_intent = fin_intent
+            final_conf = override_factor * fin_conf
+        
+        return final_intent, final_conf
 
     def map_emotion_distribution(self, raw_results, mapping):
         """
@@ -523,7 +481,7 @@ class SentimentEmotionAnalyzer:
         print(f"(confidence: {emotion_conf:.4f})")
 
         # 3. Intent
-        intent_label,intent_conf=self.hybrid_classify_intent(text, k=self.k_intent, sentiment_threshold=0.3, override_multiplier=1.5)
+        intent_label,intent_conf=self.hybrid_classify_intent(text, k=self.k_intent, sentiment_threshold=0.3, override_factor=0.8)
         print(f"\n\033[1mIntent-based Sentiment:\033[0m {intent_label}")
         print(f"(confidence: {intent_conf:.4f})")
 
