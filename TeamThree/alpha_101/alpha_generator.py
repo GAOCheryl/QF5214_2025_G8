@@ -1,7 +1,6 @@
 # generate WorldQuant Alpha101 
 import pandas as pd
-# from .utils import Alphas #lly
-from .utils import Alphas # gxr
+from .utils import Alphas
 
 import sys
 import os
@@ -122,7 +121,7 @@ def generate_alphas(input_schema = 'datacollection',
         return df, final_df
 
 
-def get_alpha101_table_from_db():
+def get_alpha101_table_from_db(to_csv = False):
 
     db = database_utils()
     db.connect()
@@ -132,11 +131,11 @@ def get_alpha101_table_from_db():
         FROM datacollection.processed_data
     '''
     db.execute_query(query_input)
-    df = pd.DataFrame(db.fetch_results(), 
+    df_stock = pd.DataFrame(db.fetch_results(), 
                       columns=["Date", "Open", "High", "Low", "Close", "Volume", "Market_Cap", "Ticker", 
                                "IndClass_Sector", "IndClass_Industry", "Typical_Price", "Return", "VWAP_5"])
 
-    df["Date"] = (pd.to_datetime(df["Date"]) .dt.strftime("%Y-%m-%d"))
+    df_stock["Date"] = (pd.to_datetime(df_stock["Date"]) .dt.strftime("%Y-%m-%d"))
     
     # Fetch the alpha101 table.
     query_alpha = f'''
@@ -145,9 +144,9 @@ def get_alpha101_table_from_db():
     '''
     db.execute_query(query_alpha)
 
-    final_df = pd.DataFrame(db.fetch_results())
-    final_df.rename(columns={final_df.columns[0]: "Date", final_df.columns[1]: "Ticker"}, inplace=True)
-    final_df["Date"] = pd.to_datetime(final_df["Date"]).dt.strftime("%Y-%m-%d")
+    df_101 = pd.DataFrame(db.fetch_results())
+    df_101.rename(columns={df_101.columns[0]: "Date", df_101.columns[1]: "Ticker"}, inplace=True)
+    df_101["Date"] = pd.to_datetime(df_101["Date"]).dt.strftime("%Y-%m-%d")
 
     # Fetch the market index table.
     query_index = f'''
@@ -155,19 +154,25 @@ def get_alpha101_table_from_db():
         FROM datacollection.index_data
     '''
     db.execute_query(query_index)
-    index_df = pd.DataFrame(db.fetch_results(), 
+    df_idx = pd.DataFrame(db.fetch_results(), 
                       columns=["Date", "Open", "High", "Low", "Close", "Adj_Close", "Volume", "Ticker", 
                                "IndexName"])
 
-    index_df["Date"] = (pd.to_datetime(index_df["Date"]) .dt.strftime("%Y-%m-%d"))
+    df_idx["Date"] = (pd.to_datetime(df_idx["Date"]) .dt.strftime("%Y-%m-%d"))
 
     db.close_connection()
     
-    return df, final_df, index_df
+    if to_csv:
+        df_stock.to_csv("stock_data.csv", index=False)
+        df_101.to_csv("alpha101.csv", index=False)
+        df_idx.to_csv("index_data.csv", index=False)
+    
+    return df_stock, df_101, df_idx
 
 
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
+    get_alpha101_table_from_db(to_csv=True)
 #     generate_alphas(input_schema = 'datacollection',
 #                     input_table_name = 'stock_data',
 #                     save = True, 
