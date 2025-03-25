@@ -39,3 +39,7 @@ for ticker in tickers:
         "queryType": "Latest",
         "cursor": ""
     }
+
+    ticker_tweets = []
+    page_number = 1
+    pbar = tqdm(total=max_tweets, desc=f"Collecting ${ticker}", unit="tweet", dynamic_ncols=True)
