@@ -20,3 +20,7 @@ tickers = [
     "CEG", "CPRT", "CSGP", "COST", "CRWD", "CSX", "DDOG", "DXCM", 
     "VRTX", "WBD", "WDAY", "XEL", "ZS", "QCOM", "REGN", "ROP", "ROST"
 ]
+
+# Number of tweets per ticker
+max_tweets = 50
+all_data = []
