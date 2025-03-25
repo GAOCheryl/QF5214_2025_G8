@@ -44,3 +44,8 @@ for ticker in tickers:
     page_number = 1
     pbar = tqdm(total=max_tweets, desc=f"Collecting ${ticker}", unit="tweet", dynamic_ncols=True)
 
+    while len(ticker_tweets) < max_tweets:
+        response = requests.get(base_url, headers=headers, params=params)
+        if response.status_code != 200:
+            print(f"❌ Error {response.status_code} for {ticker}: {response.text}")
+            break
