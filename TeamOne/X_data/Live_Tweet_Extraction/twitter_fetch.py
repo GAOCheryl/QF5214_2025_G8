@@ -49,3 +49,92 @@ for ticker in tickers:
         if response.status_code != 200:
             print(f"❌ Error {response.status_code} for {ticker}: {response.text}")
             break
+
+        data = response.json()
+        tweets = data.get("tweets", [])
+
+        ticker_tweets.extend(tweets)
+        pbar.update(len(tweets))
+
+        print(f"\n🔹 Page {page_number} (${ticker}): Retrieved {len(tweets)} tweets")
+
+        if not data.get("has_next_page") or len(ticker_tweets) >= max_tweets:
+            break
+
+        params["cursor"] = data.get("next_cursor", "")
+        page_number += 1
+
+    pbar.close()
+    ticker_tweets = ticker_tweets[:max_tweets]
+
+    print(f"✅ Finished fetching ${ticker}: {len(ticker_tweets)} tweets\n")
+
+    for t in ticker_tweets:
+        all_data.append({
+            "company": ticker,
+            "tweet_count": 1,
+            "text": t.get("text"),
+            "created_at": t.get("createdAt"),
+            "retweets": t.get("retweetCount"),
+            "likes": t.get("likeCount"),
+            "url": t.get("url"),
+            "id": t.get("id")
+        })
+
+# Convert to DataFrame
+df = pd.DataFrame(all_data)
+print(f"📦 Total tweets collected: {len(df)}")
+
+# PostgreSQL connection config
+db_config = {
+    "host": "134.122.167.14",
+    "port": "5555",
+    "dbname": "QF5214",
+    "user": "postgres",
+    "password": "qf5214"
+}
+
+# Insert into PostgreSQL
+try:
+    conn = psycopg2.connect(**db_config)
+    cur = conn.cursor()
+    print("✅ Connected to database")
+
+    insert_query = """
+        INSERT INTO datacollection.tweets_live
+        (company, tweet_count, text, created_at, retweets, likes, url, id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (id) DO UPDATE SET
+            company = EXCLUDED.company,
+            tweet_count = EXCLUDED.tweet_count,
+            text = EXCLUDED.text,
+            created_at = EXCLUDED.created_at,
+            retweets = EXCLUDED.retweets,
+            likes = EXCLUDED.likes,
+            url = EXCLUDED.url
+    """
+
+    for _, row in df.iterrows():
+        cur.execute(insert_query, (
+            row["company"],
+            row["tweet_count"],
+            row["text"],
+            row["created_at"],
+            row["retweets"],
+            row["likes"],
+            row["url"],
+            row["id"] 
+        ))
+
+    conn.commit()
+    print(f"✅ Inserted {len(df)} rows into datacollection.tweets_live")
+
+except Exception as e:
+    print("❌ Failed to insert into database:", e)
+
+finally:
+    if conn:
+        cur.close()
+        conn.close()
+        print("🔌 Database connection closed")
+
