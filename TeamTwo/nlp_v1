@@ -26,7 +26,7 @@ class SentimentEmotionAnalyzer:
           so they won't be reloaded on every analysis call.
         """
         # 1.1) Load spaCy
-        self.spacy = spacy.load("en_core_web_sm")
+        self.spacy = spacy.load("en_core_web_sm", disable=["parser", "ner"])
 
         # 1.2) Store scaling constant for intent classification
         self.k_intent = k_intent
@@ -466,24 +466,32 @@ class SentimentEmotionAnalyzer:
         print(f"\n\033[1mTweet:\033[0m {text}")
 
         # 1. FinBERT
-        finbert_results=self.finbert_pipeline(text)
+        with torch.no_grad():
+            finbert_results=self.finbert_pipeline(text)
         print("\n\033[1mFinBERT Sentiment:\033[0m")
-        for result in finbert_results[0]:
-            print(f"  {result['label']}: {result['score']:.4f}")
+        finbert_scores = {res['label'].lower(): res['score'] for res in finbert_results[0]}
+        for key, value in finbert_scores.items():
+            print(f"  {key}: {value:.4f}")
 
-        # 2a. Aggregated Emotions
-        w1, w2, w3 = (0.2, 0.4, 0.4)
-        agg_emotions=self.aggregate_emotions(text, weights=(w1, w2, w3))
-        print("\n\033[1mAggregated Emotion Distribution:\033[0m")
+        # 2. Aggregated Emotions
+        with torch.no_grad():
+            agg_emotions = self.aggregate_emotions(text, weights=(0.2, 0.4, 0.4))
+        print("\n\033[1mAggregated Emotion Distribution (3-model ensemble):\033[0m")
         for emo in self.universal_emotions:
             print(f"  {emo}: {agg_emotions[emo]:.4f}")
         emotion_conf=self.compute_emotion_confidence(text)
         print(f"(confidence: {emotion_conf:.4f})")
 
         # 3. Intent
-        intent_label,intent_conf=self.hybrid_classify_intent(text, k=self.k_intent, sentiment_threshold=0.3, override_factor=0.8)
+        with torch.no_grad():
+            intent_label,intent_conf=self.hybrid_classify_intent(text, k=self.k_intent, sentiment_threshold=0.3, override_factor=0.8)
         print(f"\n\033[1mIntent-based Sentiment:\033[0m {intent_label}")
         print(f"(confidence: {intent_conf:.4f})")
+
+        return [finbert_scores.get("positive", 0.0), finbert_scores.get("negative", 0.0), finbert_scores.get("neutral", 0.0),
+        agg_emotions["surprise"], agg_emotions["joy"], agg_emotions["anger"], agg_emotions["fear"],
+        agg_emotions["sadness"], agg_emotions["disgust"],
+        emotion_conf, intent_label, intent_conf]
 
 
 ###############################################################################
