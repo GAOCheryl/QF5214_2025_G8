@@ -275,7 +275,7 @@ class SentimentEmotionAnalyzer:
             label_str=" and ".join(chosen_intent)
             return (label_str,confidence)
 
-    def hybrid_classify_intent(self, text, k=0.5, sentiment_threshold=0.3, override_multiplier=1.5):
+    def hybrid_classify_intent(self, text, k=0.5, sentiment_threshold=0.3, override_factor=0.8):
         """
         Step 5c: 
         Hybrid approach to classify financial intent by combining:
