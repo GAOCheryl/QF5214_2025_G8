@@ -505,6 +505,9 @@ class SentimentEmotionAnalyzer:
 import pandas as pd
 from sqlalchemy import create_engine
 from datetime import datetime
+import os
+import json
+from pathlib import Path
 
 analyzer = SentimentEmotionAnalyzer()
 
@@ -518,62 +521,137 @@ db_name = "QF5214"
 # Create engine
 engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
 
-df = pd.read_csv("C:/Users/zly/Desktop/filtered_tweets_nasdaq100_1.csv")
-df.rename(columns={"Company": "company", "Cleaned_Text": "text", "Created_At": "created_at"}, inplace=True)
+# 输入文件名列表
+input_files = [
+    "filtered_tweets_nasdaq100_three.csv"
+]
+base_path = "C:/Users/zly/Desktop/"
 
-df["created_at"] = pd.to_datetime(df["created_at"], format="%a %b %d %H:%M:%S %z %Y")
-df["Date"] = df["created_at"].dt.strftime("%Y/%m/%d")
+# 生成断点记录文件名
+def get_breakpoint_file(filename):
+    stem = Path(filename).stem
+    return f"progress_{stem}.json"
 
-to_insert = []
-total_inserted = 0
+for file_name in input_files:
+    file_path = os.path.join(base_path, file_name)
+    print(f"Starting file: {file_name}")
 
-for row in df.itertuples(index=False):
-    company = row.company
-    text = str(row.text)
-    created_at_dt = row.created_at
-    created_at = created_at_dt.strftime("%Y-%m-%d %H:%M:%S")
-    date_str = created_at_dt.strftime("%Y/%m/%d")
+    # 尝试读取断点
+    bp_file = get_breakpoint_file(file_name)
 
-    result = analyzer.nlp(text)
+    if os.path.exists(bp_file):
+        with open(bp_file, "r") as f:
+            progress = json.load(f)
+        start_index = progress.get("last_index", 0)
+    else:
+        start_index = 0
 
-    to_insert.append({
-        "company": company,
-        "text": text,
-        "created_at": created_at,
-        "Date": date_str,
-        "Positive": result[0],
-        "Negative": result[1],
-        "Neutral": result[2],
-        "Surprise": result[3],
-        "Joy": result[4],
-        "Anger": result[5],
-        "Fear": result[6],
-        "Sadness": result[7],
-        "Disgust": result[8],
-        "Emotion Confidence": result[9],
-        "Intent Sentiment": result[10],
-        "Confidence": result[11]
-    })
+    # 加载数据
+    df = pd.read_csv(file_path)
+    df.rename(columns={"Company": "company", "Cleaned_Text": "text", "Created_At": "created_at"}, inplace=True)
+    df["created_at"] = pd.to_datetime(df["created_at"], format="%a %b %d %H:%M:%S %z %Y")
+    df["Date"] = df["created_at"].dt.strftime("%Y/%m/%d")
 
-    if len(to_insert) >= 100:
-        pd.DataFrame(to_insert).to_sql(
-            name="filtered_sentiment_raw_data",
-            con=engine,
-            if_exists="append",
-            index=False,
-            schema="nlp"
-        )
-        total_inserted += len(to_insert)
-        to_insert = []
+    total_rows = len(df)
+    success_count = 0
+    to_insert = []
 
-if to_insert:
-    pd.DataFrame(to_insert).to_sql(
-        name="filtered_sentiment_raw_data",
-        con=engine,
-        if_exists="append",
-        index=False,
-        schema="nlp"
-    )
-    total_inserted += len(to_insert)
+    for i, row in enumerate(df.itertuples(index=False), start=0):
+        if i < start_index:
+            continue
 
-print(f"Finished inserting {total_inserted} new rows into filtered_sentiment_raw_data.")
+        company = row.company
+        text = str(row.text)
+        created_at_dt = row.created_at
+        created_at = created_at_dt.strftime("%Y-%m-%d %H:%M:%S")
+        date_str = created_at_dt.strftime("%Y/%m/%d")
+
+        try:
+            result = analyzer.nlp(text)
+            to_insert.append({
+                "company": company,
+                "text": text,
+                "created_at": created_at,
+                "Date": date_str,
+                "Positive": result[0],
+                "Negative": result[1],
+                "Neutral": result[2],
+                "Surprise": result[3],
+                "Joy": result[4],
+                "Anger": result[5],
+                "Fear": result[6],
+                "Sadness": result[7],
+                "Disgust": result[8],
+                "Emotion Confidence": result[9],
+                "Intent Sentiment": result[10],
+                "Confidence": result[11]
+            })
+        except Exception as e:
+            print(f"Skip row {i} due to model error.")
+
+        # 每100行尝试插入
+        if len(to_insert) >= 100:
+            df_batch = pd.DataFrame(to_insert)
+            table_name = f"sentiment_raw_data_{Path(file_name).stem.split('_')[-1]}"
+            try:
+                df_batch.to_sql(
+                    name=table_name,
+                    con=engine,
+                    if_exists="append",
+                    index=False,
+                    schema="nlp"
+                )
+            except Exception as e:
+                print(f"Batch insert failed at row {i}, retrying single inserts.")
+                for j, item in enumerate(to_insert):
+                    try:
+                        pd.DataFrame([item]).to_sql(
+                            name=table_name,
+                            con=engine,
+                            if_exists="append",
+                            index=False,
+                            schema="nlp"
+                        )
+                    except Exception as e2:
+                        actual_row = i - len(to_insert) + j + 1
+                        print(f"Single insert failed at row {actual_row}")
+            success_count += len(to_insert)
+            to_insert = []
+
+            if success_count % 1000 == 0:
+                print(f"Inserted {success_count} rows from {file_name}")
+
+            # 实时记录断点（按逻辑处理了多少行）
+            with open(bp_file, "w") as f:
+                json.dump({"last_index": i + 1}, f)
+
+    # 插入最后不足100条的
+    if to_insert:
+        df_batch = pd.DataFrame(to_insert)
+        table_name = f"sentiment_raw_data_{Path(file_name).stem.split('_')[-1]}"
+        try:
+            df_batch.to_sql(
+                name=table_name,
+                con=engine,
+                if_exists="append",
+                index=False,
+                schema="nlp"
+            )
+        except Exception as e:
+            print(f"Final batch insert failed, retrying single inserts.")
+            for item in to_insert:
+                try:
+                    pd.DataFrame([item]).to_sql(
+                        name=table_name,
+                        con=engine,
+                        if_exists="append",
+                        index=False,
+                        schema="nlp"
+                    )
+                except Exception as e2:
+                    print(f"Final single insert failed.")
+        success_count += len(to_insert)
+        with open(bp_file, "w") as f:
+            json.dump({"last_index": total_rows}, f)
+
+    print(f"Finished processing {file_name}, total inserted: {success_count} rows.")
