@@ -180,6 +180,7 @@ class MASTER(nn.Module):
         self.gate_input_end_index = gate_input_end_index
         self.d_gate_input = (gate_input_end_index - gate_input_start_index) # F'
         self.feature_gate = Gate(self.d_gate_input, d_feat, beta=beta)
+        
 
         self.layers = nn.Sequential(
             # feature layer
@@ -197,6 +198,9 @@ class MASTER(nn.Module):
     def forward(self, x):
         src = x[:, :, :self.gate_input_start_index] # N, T, D
         gate_input = x[:, -1, self.gate_input_start_index:self.gate_input_end_index]
+
+        gated_val = self.feature_gate(gate_input)
+            
         src = src * torch.unsqueeze(self.feature_gate(gate_input), dim=1)
        
         output = self.layers(src).squeeze(-1)

@@ -169,6 +169,8 @@ class SequenceModel():
                 torch.save(best_param, f'{self.save_path}/{self.save_prefix}_{self.seed}.pkl')
                 break
 
+
+
     def predict(self, dl_test, df_all):
         if df_all is None or df_all.empty:
             raise ValueError("df_all is None or empty. Ensure data is loaded properly.")
@@ -194,16 +196,29 @@ class SequenceModel():
             data = torch.squeeze(data, dim=0)
             feature = data[:, :, 0:-1].to(self.device)
             label = data[:, -1, -1]
-
+        
             with torch.no_grad():
                 pred = self.model(feature.float()).detach().cpu().numpy()
             preds.append(pred.ravel())
             labels.append(label.detach().cpu().numpy())
-
             daily_ic, daily_ric = calc_ic(pred, label.detach().numpy())
+            #if np.isnan(daily_ic):
+                #print(feature, flush=True)
+                #print("daily_ic is nan")
+                #indices = torch.tensor([20, 21, 22, 23, 24, 37, 39, 40])
+                #selected_features = feature[indices]
+                #print(selected_features)
+                
+                #nan_indices = torch.nonzero(torch.isnan(feature))
+                #print("DEBUG: NaN detected for features. Row indices with NaN:", nan_indices, flush=True)
+                #print(label, flush=True)
+                #print(self.model(feature.float()), flush=True)
+                #print(pred, flush=True)
+                
+            
             ic.append(daily_ic)
             ric.append(daily_ric)
-
+        
         predictions = pd.Series(np.concatenate(preds), index=dl_test.get_index())
         real_returns = pd.Series(np.concatenate(labels), index=dl_test.get_index(), name="Actual_Return")
 
@@ -215,7 +230,9 @@ class SequenceModel():
         # Ensure use of raw data.
         real_prices = original_prices.loc[common_index].rename("Price")
         market_cap = original_market_caps.loc[common_index].rename("Market_Cap")
-
+        #print(ic, flush=True)
+        #print(np.mean(ic), flush=True)
+        #print(np.std(ic), flush=True)
         metrics = {
             'IC': np.mean(ic),
             'ICIR': np.mean(ic) / np.std(ic),

@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Copy the dataset to avoid modifying the original data
-df = pd.read_csv("predictions.csv")
+df = pd.read_csv("predictions_1.csv")
 
 # Market Cap Weighted Trading Strategy
 #
@@ -102,7 +102,7 @@ risk_free_rate = 0.04 / 252
 epsilon = 1e-8  # Small value to avoid division by zero
 portfolio_daily_returns = results['Cumulative_Return'].pct_change().dropna() # results['Portfolio_Return']
 excess_returns = portfolio_daily_returns - risk_free_rate
-sharpe_ratio = (excess_returns.mean() / (excess_returns.std() + epsilon)) #* np.sqrt(252)
+sharpe_ratio = (excess_returns.mean() / (excess_returns.std() + epsilon)) * np.sqrt(252)
 
 max_drawdown = (results['Cumulative_Return'] / results['Cumulative_Return'].cummax() - 1).min()
 
