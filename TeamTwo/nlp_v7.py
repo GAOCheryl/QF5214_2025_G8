@@ -518,8 +518,8 @@ db_name = "QF5214"
 # Create engine
 engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
 
-df = pd.read_csv("C:/Users/zly/Desktop/tweets_nasdaq100_1.csv")
-df.rename(columns={"Company": "company", "Text": "text", "Created_At": "created_at"}, inplace=True)
+df = pd.read_csv("C:/Users/zly/Desktop/filtered_tweets_nasdaq100_1.csv")
+df.rename(columns={"Company": "company", "Cleaned_Text": "text", "Created_At": "created_at"}, inplace=True)
 
 df["created_at"] = pd.to_datetime(df["created_at"], format="%a %b %d %H:%M:%S %z %Y")
 df["Date"] = df["created_at"].dt.strftime("%Y/%m/%d")
@@ -557,7 +557,7 @@ for row in df.itertuples(index=False):
 
     if len(to_insert) >= 100:
         pd.DataFrame(to_insert).to_sql(
-            name="new_sentiment_raw_data",
+            name="filtered_sentiment_raw_data",
             con=engine,
             if_exists="append",
             index=False,
@@ -568,7 +568,7 @@ for row in df.itertuples(index=False):
 
 if to_insert:
     pd.DataFrame(to_insert).to_sql(
-        name="new_sentiment_raw_data",
+        name="filtered_sentiment_raw_data",
         con=engine,
         if_exists="append",
         index=False,
@@ -576,4 +576,4 @@ if to_insert:
     )
     total_inserted += len(to_insert)
 
-print(f"Finished inserting {total_inserted} new rows into new_sentiment_raw_data.")
+print(f"Finished inserting {total_inserted} new rows into filtered_sentiment_raw_data.")
