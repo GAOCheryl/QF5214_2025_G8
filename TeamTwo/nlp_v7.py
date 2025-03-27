@@ -493,15 +493,6 @@ class SentimentEmotionAnalyzer:
         agg_emotions["sadness"], agg_emotions["disgust"],
         emotion_conf, intent_label, intent_conf]
 
-
-###############################################################################
-# Example usage
-###############################################################################
-#if __name__=="__main__":
-    #analyzer=SentimentEmotionAnalyzer()
-    #example_text="$NVDA, the most valuable company in the world finished down 8.7%. It lost $250 billion in market cap. Unusual."
-    #analyzer.nlp(example_text)
-
 import pandas as pd
 from sqlalchemy import create_engine
 from datetime import datetime
@@ -517,17 +508,13 @@ db_password = "qf5214"
 db_host = "134.122.167.14"
 db_port = 5555
 db_name = "QF5214"
-
-# Create engine
 engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
 
-# 输入文件名列表
 input_files = [
-    "filtered_tweets_nasdaq100_three.csv"
+    "filtered_tweets_nasdaq100_one.csv"
 ]
 base_path = "C:/Users/zly/Desktop/"
 
-# 生成断点记录文件名
 def get_breakpoint_file(filename):
     stem = Path(filename).stem
     return f"progress_{stem}.json"
@@ -536,7 +523,6 @@ for file_name in input_files:
     file_path = os.path.join(base_path, file_name)
     print(f"Starting file: {file_name}")
 
-    # 尝试读取断点
     bp_file = get_breakpoint_file(file_name)
 
     if os.path.exists(bp_file):
@@ -546,7 +532,6 @@ for file_name in input_files:
     else:
         start_index = 0
 
-    # 加载数据
     df = pd.read_csv(file_path)
     df.rename(columns={"Company": "company", "Cleaned_Text": "text", "Created_At": "created_at"}, inplace=True)
     df["created_at"] = pd.to_datetime(df["created_at"], format="%a %b %d %H:%M:%S %z %Y")
@@ -589,7 +574,6 @@ for file_name in input_files:
         except Exception as e:
             print(f"Skip row {i} due to model error.")
 
-        # 每100行尝试插入
         if len(to_insert) >= 100:
             df_batch = pd.DataFrame(to_insert)
             table_name = f"sentiment_raw_data_{Path(file_name).stem.split('_')[-1]}"
@@ -621,11 +605,9 @@ for file_name in input_files:
             if success_count % 1000 == 0:
                 print(f"Inserted {success_count} rows from {file_name}")
 
-            # 实时记录断点（按逻辑处理了多少行）
             with open(bp_file, "w") as f:
                 json.dump({"last_index": i + 1}, f)
 
-    # 插入最后不足100条的
     if to_insert:
         df_batch = pd.DataFrame(to_insert)
         table_name = f"sentiment_raw_data_{Path(file_name).stem.split('_')[-1]}"
