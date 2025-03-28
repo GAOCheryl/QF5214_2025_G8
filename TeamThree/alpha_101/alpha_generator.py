@@ -171,46 +171,36 @@ def get_alpha101_table_from_db(to_csv = False):
 
 
 
+def get_sentiment_table_from_db():
+    db = database_utils()
+    db.connect()
+    # Fetch the input stock_data table.
+    query_input = f'''SELECT * FROM nlp.sentiment_aggregated_data'''
+    db.execute_query(query_input)
+    df_sentiment = pd.DataFrame(db.fetch_results(), 
+                      columns=["Ticker", "Date", "Positive", "Negative", "Neutral", "Surprise", "Joy", "Anger", 
+                               "Fear", "Sadness", "Disgust", "Intent Sentiment"])
+    df_sentiment["Date"] = (pd.to_datetime(df_sentiment["Date"]) .dt.strftime("%Y-%m-%d"))
+
+    query_input = f'''SELECT * FROM nlp.sentiment_aggregated_data_filter'''
+    db.execute_query(query_input)
+    df_sentiment_filter = pd.DataFrame(db.fetch_results(), 
+                      columns=["Ticker", "Date", "Positive", "Negative", "Neutral", "Surprise", "Joy", "Anger", 
+                               "Fear", "Sadness", "Disgust", "Intent Sentiment"])
+    df_sentiment_filter["Date"] = (pd.to_datetime(df_sentiment["Date"]) .dt.strftime("%Y-%m-%d"))
+    db.close_connection()
+
+    return df_sentiment, df_sentiment_filter
+
+
+
+
+ 
+
+
 if __name__ == '__main__':
     get_alpha101_table_from_db(to_csv=True)
-#     generate_alphas(input_schema = 'datacollection',
-#                     input_table_name = 'stock_data',
-#                     save = True, 
-#                     output_schema = 'datacollection',
-#                     output_table_name = 'alpha101',
-#                     if_return = False)
-#     generate_alphas()
-#     df, final_df = generate_alphas()
-#     print("Alpha DataFrame:\n", final_df.head())
-#     final_df.to_csv("alpha_results.csv", index=False)
-#     print("Done.")
+
+    
 
 
-
-#if __name__ == '__main__':
-#    alpha_indices = [
- #       1, 2, 3, 4, 5, 6, 7, 8, 9, 
-  #      10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 
-   #     20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 
-    #    30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 
-     #   40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 
-      #  50, 51, 52, 53, 54, 55, 56, 57, 58, 
-       # 60, 61, 62, 63, 64, 65, 66, 68, 
- #       71, 72, 73, 74, 75, 77, 78, 
-  #      81, 83, 84, 85, 86, 88, 
-   #     92, 94, 95, 96, 98, 99, 101,
-    #]
-    # for later usage
- #   db = database_utils()
-  #  db.connect()
-   # db.set_schema('datacollection')
-    #db.execute_query('SELECT "Date", "Open", "High", "Low", "Close", "Volume", "Market_Cap", "Ticker", "IndClass_Sector", "IndClass_Industry" FROM stock_data')
-   # df = pd.DataFrame(db.fetch_results(), columns=["Date", "Open", "High", "Low", "Close", "Volume", "Market_Cap", "Ticker", "IndClass_Sector", "IndClass_Industry"])
-    # df = pd.read_csv('.\TeamOne\stock_data.csv')
-    #df = data_preprocessing(df)
-   # tickers = df['Ticker'].unique()
-    #final_df = run_by_ticker(df, tickers, alpha_indices) #compute alpha for each stock
-    #print(final_df)
-    # final_df.to_csv("alpha_results.csv", index=False)
-    #print("Done.")
-    #db.close_connection()
