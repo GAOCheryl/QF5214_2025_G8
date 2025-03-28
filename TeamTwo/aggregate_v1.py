@@ -1,14 +1,12 @@
 import pandas as pd
 from sqlalchemy import create_engine
 
-# PostgreSQL connection settings
 db_user = "postgres"
 db_password = "qf5214"
 db_host = "134.122.167.14"
 db_port = 5555
 db_name = "QF5214"
 
-# Create engine
 engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
 
 query = """
