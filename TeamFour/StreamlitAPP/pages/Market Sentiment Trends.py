@@ -25,7 +25,7 @@ st.markdown(
     f"""
     <div style="text-align: center; padding: 10px 0; font-size: 18px; color: #444;">
         <b>{date_today}</b><br>
-        SGT: {time_sgt} &nbsp;&nbsp;|&nbsp;&nbsp; New York: {time_ny}
+        Singapore: {time_sgt} &nbsp;&nbsp;|&nbsp;&nbsp; New York: {time_ny}
     </div>
     """,
     unsafe_allow_html=True
