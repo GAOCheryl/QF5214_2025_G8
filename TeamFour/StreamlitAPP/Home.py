@@ -19,10 +19,33 @@ st.markdown("""
 
 <h4 style='text-align: center; color: #333;'>📄 Project Report</h4>
 <p style='text-align: center; font-size: 16px;'>
-    <a href='https://www.overleaf.com/project/67dfb3b0710097f9401b9ddd' target='_blank' style='text-decoration: none; color: #1a73e8;'>
+    <a href='rhttps://www.overleaf.com/read/cyqsrrktcjtz#d804e3' target='_blank' style='text-decoration: none; color: #1a73e8;'>
         Click here to view our full project report
     </a>
 </p>
 
 <hr style='border: 1px solid #ccc; margin-top: 10px;'>
 """, unsafe_allow_html=True)
+
+# --- Page Descriptions Section ---
+st.markdown("""
+
+
+<h4 style='text-align: leftrr;'>Dashboard Guide</h4>
+
+<p style='padding: 0 10%; font-size: 16px; color: #444;'>
+
+<b> Main Portfolio Analysis</b><br>
+Visualizes our strategy performance with and without sentiment factors. Includes backtest results and IC comparisons to evaluate predictive power.
+<br><br>
+
+<b> Market Sentiment Trends</b><br>
+Explore recent sentiment trends for current holdings. Analyze detailed sentiment scores, tracked over 1W/1M for each stock.
+<br><br>
+
+<b> Sentiment & Stock Performance</b><br>
+Investigate the relationship between sentiment scores and daily returns using 1 year of data — gain insight into how sentiment may impact price movements.
+
+</p>
+""", unsafe_allow_html=True)
+
