@@ -8,6 +8,9 @@ import sys, os
 import qlib
 from qlib.data.dataset import TSDataSampler
 from bisect import bisect_right
+import time
+import optuna
+import pandas as pd
 
 # Move up one directory from MASTER-master
 parent_dir = os.path.abspath(os.path.join(os.getcwd(), ".."))
@@ -19,26 +22,6 @@ from alpha_101.alpha_generator import generate_alphas
 from alpha_101.alpha_generator import get_sentiment_table_from_db
 
 '''
-df_sentiment, df_sentiment_filter = get_sentiment_table_from_db()
-
-# Ensure the 'Date' column is in datetime format.
-df_sentiment['Date'] = pd.to_datetime(df_sentiment['Date'])
-
-# Get the sorted unique dates and tickers from df_sentiment.
-unique_dates = sorted(df_sentiment['Date'].unique())
-unique_tickers = sorted(df_sentiment['Ticker'].unique())
-
-# Create a complete MultiIndex with all combinations of Date and Ticker.
-full_index = pd.MultiIndex.from_product([unique_dates, unique_tickers], names=['Date', 'Ticker'])
-
-# Set the DataFrame index to ['Date', 'Ticker'].
-df_sentiment_indexed = df_sentiment.set_index(['Date', 'Ticker'])
-
-# Reindex to the full index, filling missing rows with 0.
-df_sentiment_filled = df_sentiment_indexed.reindex(full_index, fill_value=0).reset_index()
-
-df_sentiment_filled['Ticker'] = df_sentiment_filled['Ticker'].str.replace(r'\$', '', regex=True)
-
 # Call generate_alphas() which returns (df, final_df)
 df, final_df = generate_alphas(input_schema = 'datacollection',
                     input_table_name = 'stock_data',
@@ -46,7 +29,6 @@ df, final_df = generate_alphas(input_schema = 'datacollection',
                     output_schema = 'datacollection',
                     output_table_name = 'alpha101',
                     if_return = True)
-'''
 
 df_all, final_df_all, df_index = get_alpha101_table_from_db()
 
@@ -58,31 +40,29 @@ company_list = company_list = ["ADBE", "AMD", "ABNB", "GOOGL", "GOOG", "AMZN", "
 "REGN", "ROP", "ROST", "FAST", "FTNT", "GILD" ,"ON", "PCAR", "PLTR", "PANW","PAYX", "PYPL", 
 "PDD", "PEP","SBUX", "SNPS", "TTWO", "TMUS","TSLA", "TXN", "TTD", "VRSK"] 
 
+filtered_df_all = df_all[df_all['Ticker'].isin(company_list)]
+filtered_final_df_all = final_df_all[final_df_all['Ticker'].isin(company_list)]
+
+filtered_df_all.to_csv("data/Input/stock.csv", index=False)
+filtered_final_df_all.to_csv("data/Input/alpha.csv", index=False)
+df_index.to_csv("data/Input/index.csv", index=False)
+
+print("Save all the input data")
+'''
+
+df_all = pd.read_csv("data/Input/stock.csv")
+final_df_all = pd.read_csv("data/Input/alpha.csv")
+df_index = pd.read_csv("data/Input/index.csv")
+
 # Ensure the Date column is in datetime format.
 df_all['Date'] = pd.to_datetime(df_all['Date'])
 final_df_all['Date'] = pd.to_datetime(final_df_all['Date'])
 df_index['Date'] = pd.to_datetime(df_index['Date'])
-#df_sentiment_filled['Date'] = pd.to_datetime(df_sentiment_filled['Date'])
 
 # Filter the DataFrame: select rows where Date is on or before 2025-02-28.
 filtered_df_all = df_all[df_all['Date'] <= pd.Timestamp('2025-02-28')]
 filtered_final_df_all = final_df_all[final_df_all['Date'] <= pd.Timestamp('2025-02-28')]
 filtered_df_index = df_index[df_index['Date'] <= pd.Timestamp('2025-02-28')]
-#filtered_df_sentiment = df_sentiment_filled[df_sentiment_filled['Date'] <= pd.Timestamp('2025-02-28')]
-
-filtered_df_all = filtered_df_all[filtered_df_all['Ticker'].isin(company_list)]
-filtered_final_df_all = filtered_final_df_all[filtered_final_df_all['Ticker'].isin(company_list)]
-#filtered_df_sentiment = filtered_df_sentiment[filtered_df_sentiment['Ticker'].isin(company_list)]
-
-filtered_df_all.to_csv("df_all.csv", index=False)
-filtered_final_df_all.to_csv("final_df_all.csv", index=False)
-filtered_df_index.to_csv("df_index.csv", index=False)
-#filtered_df_sentiment.to_csv("filtered_df_sentiment.csv", index=False)
-
-filtered_df_all = pd.read_csv("df_all.csv")
-filtered_final_df_all = pd.read_csv("final_df_all.csv")
-filtered_df_index = pd.read_csv("df_index.csv")
-#filtered_df_sentiment = pd.read_csv("filtered_df_sentiment.csv")
 
 # 1) Drop the "IndexTicker" and "Volume" column if it exists
 filtered_df_index = filtered_df_index.drop(columns="IndexTicker", errors="ignore")
@@ -123,62 +103,7 @@ df_merged.fillna(0, inplace=True)
 
 # Example of dropping non-numeric columns:
 filtered_df_merged = df_merged.drop(columns=["IndClass_Sector", "IndClass_Industry"])
-'''
-#filtered_df_sentiment = filtered_df_sentiment.drop(columns=["Intent Sentiment"])
 
-for col in filtered_df_sentiment.columns:
-    if col not in ['Date', 'Ticker']:
-        filtered_df_sentiment[col] = pd.to_numeric(filtered_df_sentiment[col], errors='coerce')
-
-# Get the sorted unique trading dates from df_merged.
-trading_dates = sorted(df_merged['Date'].unique())
-    
-combined_sent_list = []
-
-# Process each ticker separately.
-tickers = filtered_df_merged['Ticker'].unique()
-for ticker in tickers:
-    # Subset sentiment data for this ticker.
-    df_sent_ticker = filtered_df_sentiment[filtered_df_sentiment['Ticker'] == ticker].copy()
-    # Loop over each trading date.
-    for i, current_date in enumerate(trading_dates):
-        if i < len(trading_dates) - 1:
-            next_date = trading_dates[i+1]
-        else:
-            next_date = None
-        
-        # Define the window: from current_date (inclusive) to next_date (exclusive).
-        if next_date is not None:
-            window = df_sent_ticker[(df_sent_ticker['Date'] >= current_date) & 
-                                        (df_sent_ticker['Date'] < next_date)]
-        else:
-            window = df_sent_ticker[df_sent_ticker['Date'] >= current_date]
-        
-        # If there's sentiment data in the window, compute the average.
-        if not window.empty:
-            # Assume sentiment columns are all except 'Date' and 'Ticker'.
-            sentiment_cols = [col for col in window.columns if col not in ['Date', 'Ticker']]
-            avg_values = window[sentiment_cols].mean()
-            
-            # Create a new row with the current trading date, ticker, and averaged sentiment.
-            row = {'Date': current_date, 'Ticker': ticker}
-            row.update(avg_values.to_dict())
-            combined_sent_list.append(row)
-
-
-# Create a DataFrame from the combined sentiment data.
-df_combined_sent = pd.DataFrame(combined_sent_list)
-
-# Drop any rows whose dates are not in df_merged (should be none if we use trading_dates,
-    # but we do this for safety).
-df_combined_sent = df_combined_sent[df_combined_sent['Date'].isin(filtered_df_merged['Date'])]
-    
-    
-
-# Merge df_merged with the combined sentiment data.
-# Use a left merge so that all trading dates and tickers in df_merged are preserved.
-df_final = pd.merge(filtered_df_merged, df_combined_sent, on=['Date', 'Ticker'], how='left')
-'''
 df_final = filtered_df_merged.copy()
 df_sorted = df_final.sort_values(by='Date').reset_index(drop=True)
 
@@ -271,21 +196,129 @@ dl_test = convert_data_qlibformat(df_test)
 
 
 # Save the merged DataFrame tinpuo a pickle file
-with open("training_input_without_sentiment.pkl", "wb") as f:
+with open("data/input/training_input_without_sentiment.pkl", "wb") as f:
     pickle.dump(dl_train, f)
-with open("valid_input_without_sentiment.pkl", "wb") as f:
+with open("data/input/valid_input_without_sentiment.pkl", "wb") as f:
     pickle.dump(dl_valid, f)
-with open("testing_input_without_sentiment.pkl", "wb") as f:
+with open("data/input/testing_input_without_sentiment.pkl", "wb") as f:
     pickle.dump(dl_test, f)
 
 
-with open(f'training_input_without_sentiment.pkl', 'rb') as f:
+with open(f'data/input/training_input_without_sentiment.pkl', 'rb') as f:
     dl_train = pickle.load(f)
-with open(f'valid_input_without_sentiment.pkl', 'rb') as f:
+with open(f'data/input/valid_input_without_sentiment.pkl', 'rb') as f:
     dl_valid = pickle.load(f)
-with open(f'testing_input_without_sentiment.pkl', 'rb') as f:
+with open(f'data/input/testing_input_without_sentiment.pkl', 'rb') as f:
     dl_test = pickle.load(f)
 
+
+import time
+import itertools
+import pandas as pd
+
+# Define your hyperparameter lists
+d_model_list   = [128, 256]
+t_nhead_list   = [4]
+s_nhead_list   = [4]
+dropout_list   = [0.7]
+beta_list      = [10]
+lr_list        = [1e-4]
+'''
+t_nhead_list   = [4, 8]
+s_nhead_list   = [2, 4]
+dropout_list   = [0.7]
+beta_list      = [5, 10]
+lr_list        = [1e-4]
+'''
+
+# Fixed parameters
+d_feat = 9
+gate_input_start_index = 9
+gate_input_end_index = 121 
+n_epoch = 100
+GPU = 0
+train_stop_loss_thred = 0.0007
+
+# Prepare a list to store results for each hyperparameter combination
+results = []
+
+# Loop over all combinations using itertools.product
+for d_model, t_nhead, s_nhead, dropout, beta, lr in itertools.product(
+    d_model_list, t_nhead_list, s_nhead_list, dropout_list, beta_list, lr_list
+):
+    print(f"Running combination: d_model={d_model}, t_nhead={t_nhead}, s_nhead={s_nhead}, dropout={dropout}, beta={beta}, lr={lr}")
+    
+    # To average results over seeds; here we use one seed but you can add more if needed
+    ic_list = []
+    icir_list = []
+    ric_list = []
+    ricir_list = []
+    
+    for seed in [0]:
+        # Initialize your model with the current hyperparameter combination
+        model = MASTERModel(
+            d_feat=d_feat,
+            d_model=d_model,
+            t_nhead=t_nhead,
+            s_nhead=s_nhead,
+            T_dropout_rate=dropout,
+            S_dropout_rate=dropout,
+            beta=beta,
+            gate_input_end_index=gate_input_end_index,
+            gate_input_start_index=gate_input_start_index,
+            n_epochs=n_epoch,
+            lr=lr,
+            GPU=GPU,
+            seed=seed,
+            train_stop_loss_thred=train_stop_loss_thred,
+            save_path='model',
+            save_prefix='model_training_without_sentiment'
+        )
+    
+        start = time.time()
+        # Train the model using your training code
+        model.fit(dl_train, df_all, dl_valid)
+        print("Model Trained.")
+    
+        # Prediction / Testing phase
+        print("Start Prediction")
+        predictions, metrics, real_returns, real_prices, market_cap = model.predict(dl_test, df_all)
+        run_time = time.time() - start
+        print(f"Seed: {seed} time cost: {run_time:.2f} sec")
+        print("Metrics:", metrics)
+    
+        # Append each metric after converting to float
+        ic_list.append(float(metrics['IC']))
+        icir_list.append(float(metrics['ICIR']))
+        ric_list.append(float(metrics['RIC']))
+        ricir_list.append(float(metrics['RICIR']))
+    
+    # Compute mean values for each indicator if available
+    mean_ic   = np.mean(ic_list)    if ic_list   else None
+    mean_icir = np.mean(icir_list)  if icir_list else None
+    mean_ric  = np.mean(ric_list)    if ric_list  else None
+    mean_ricir= np.mean(ricir_list)  if ricir_list else None
+    
+    # Save the hyperparameter combination and its performance
+    results.append({
+        "d_model": d_model,
+        "t_nhead": t_nhead,
+        "s_nhead": s_nhead,
+        "dropout": dropout,
+        "beta": beta,
+        "lr": lr,
+        "mean_ic": mean_ic,
+        'mean_ICIR': mean_icir,
+        'mean_RIC': mean_ric,
+        'mean_RICIR': mean_ricir
+    })
+    
+# Convert the results to a DataFrame and save to CSV
+df_results = pd.DataFrame(results)
+df_results.to_csv("data/Output/hyperparameter_without_sentiment_results.csv", index=False)
+print("Grid search results saved to data/Output/hyperparameter_without_sentiment_results.csv")
+
+'''
 d_feat = 9
 d_model = 256
 t_nhead = 4
@@ -326,7 +359,7 @@ for seed in [0]: # , 1, 2, 3, 4
         d_feat = d_feat, d_model = d_model, t_nhead = t_nhead, s_nhead = s_nhead, T_dropout_rate=dropout, S_dropout_rate=dropout,
         beta=beta, gate_input_end_index=gate_input_end_index, gate_input_start_index=gate_input_start_index,
         n_epochs=n_epoch, lr = lr, GPU = GPU, seed = seed, train_stop_loss_thred = train_stop_loss_thred,
-        save_path='model', save_prefix=f'model_training'
+        save_path='model', save_prefix=f'model_training_without_sentiment'
     )
 
     start = time.time()
@@ -365,7 +398,7 @@ for seed in [0]:
             d_feat = d_feat, d_model = d_model, t_nhead = t_nhead, s_nhead = s_nhead, T_dropout_rate=dropout, S_dropout_rate=dropout,
             beta=beta, gate_input_end_index=gate_input_end_index, gate_input_start_index=gate_input_start_index,
             n_epochs=n_epoch, lr = lr, GPU = GPU, seed = seed, train_stop_loss_thred = train_stop_loss_thred,
-            save_path='model', save_prefix=f'model_prediction'
+            save_path='model', save_prefix=f'model_prediction_without_sentiment'
         )
     model.load_param(param_path)
     ###### 1
@@ -420,16 +453,6 @@ for seed in [0]:
     )
     df_merged_predictions.rename(columns={"datetime": "Date", "instrument": "Ticker"}, inplace=True)
 
-    '''
-    df_real_returns = real_returns.reset_index(drop=True)
-    df_real_prices = real_prices.reset_index(drop=True)
-    df_market_cap = market_cap.reset_index(drop=True)
-
-    # Merge the sheet to the right side.
-    df_predictions["Actual_Return"] = df_real_returns
-    df_predictions["Price"] = df_real_prices
-    df_predictions["Market_Cap"] = df_market_cap
-    '''
 
     # To CSV
     csv_path = "predictions_without_sentiment.csv"
@@ -447,3 +470,4 @@ print("RICIR: {:.4f} pm {:.4f}".format(np.mean(ricir), np.std(ricir)))
 ###### 3
 print(df_merged_predictions.head())
 
+'''
