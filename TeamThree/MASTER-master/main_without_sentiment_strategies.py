@@ -218,18 +218,12 @@ import pandas as pd
 
 # Define your hyperparameter lists
 d_model_list   = [128, 256]
-t_nhead_list   = [4]
-s_nhead_list   = [4]
-dropout_list   = [0.7]
-beta_list      = [10]
-lr_list        = [1e-4]
-'''
 t_nhead_list   = [4, 8]
 s_nhead_list   = [2, 4]
 dropout_list   = [0.7]
 beta_list      = [5, 10]
 lr_list        = [1e-4]
-'''
+
 
 # Fixed parameters
 d_feat = 9
