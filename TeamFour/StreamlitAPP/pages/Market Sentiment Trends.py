@@ -33,6 +33,10 @@ st.markdown(
 
 st.title("Market Sentiment Trends")
 
+# Spacer
+st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+
+
 # --- DB Connection ---
 host = "134.122.167.14"
 port = "5555"
@@ -168,19 +172,26 @@ if selected_company:
     except Exception as e:
         st.error(f"Error loading sentiment data: {e}")
 
+
 # --- Timeframe Toggle & Dynamic Sentiment Trend Chart ---
 try:
-    # Timeframe selection
-    timeframe = st.radio(
-        "Select Timeframe:",
-        ["1W", "1M"],
-        index=1,  # default = 1M
-        horizontal=True,
-        label_visibility="collapsed"
+    st.markdown(
+        f"<h4 style='margin-top: 40px; margin-bottom: 5px;'>Sentiment Trend Visualization</h4>",
+        unsafe_allow_html=True
     )
 
+    # Place 1W/1M toggle just below
+    with st.container():
+        timeframe = st.radio(
+            "",
+            ["1W", "1M"],
+            index=1,
+            horizontal=True,
+            label_visibility="collapsed"
+        )
+
     # Set number of days based on timeframe
-    days_back = 7 if timeframe == "1W" else 30
+    days_back = 5 if timeframe == "1W" else 30
     start_date = (sentiment_date_obj - timedelta(days=days_back)).strftime('%Y/%m/%d')
     end_date = sentiment_date_str  # T-1
 
@@ -214,10 +225,6 @@ try:
 
         max_score = clean_df["Score"].max()
 
-        st.markdown(
-            f"<h4 style='margin-top: 30px;'>Sentiment Trend ({timeframe})</h4>",
-            unsafe_allow_html=True
-        )
 
         fig = px.line(
             clean_df,
