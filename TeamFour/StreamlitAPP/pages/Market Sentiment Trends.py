@@ -94,7 +94,7 @@ def load_combined_sentiment_data(company: str, start_date: str, end_date: str):
 
     for table in tables:
         query = f"""
-            SELECT "Date", "company", "Surprise", "Joy", "Anger", "Fear", "Sadness", "Disgust"
+            SELECT "Date", "company", "Surprise", "Joy", "Anger", "Fear", "Sadness", "Disgust", "Positive", "Negative", "Neutral", "Intent Sentiment"
             FROM {table}
             WHERE ("company" = '{company}' OR "company" = '${company}')
             AND "Date" >= '{start_date}' AND "Date" <= '{end_date}'
@@ -111,6 +111,76 @@ def load_combined_sentiment_data(company: str, start_date: str, end_date: str):
         combined_df = combined_df.dropna(subset=["Date"])
         return combined_df.sort_values("Date")
     return pd.DataFrame()
+
+
+st.markdown(f"<h5 style='margin-top: 20px;'> Selected Company: {selected_company} ({position_type})</h5>", unsafe_allow_html=True)
+
+# --- Display sentiment score table for sentiment_date_str ---
+try:
+    latest_sentiment_df = load_combined_sentiment_data(selected_company, sentiment_date_str, sentiment_date_str)
+    if not latest_sentiment_df.empty:
+        row = latest_sentiment_df[latest_sentiment_df["Date"] == pd.to_datetime(sentiment_date_str)].iloc[0]
+
+        # Get Position type from ticker list
+        position_type = tickers_df.loc[tickers_df["Ticker"] == selected_company, "Position_Type"].values[0] if "Position_Type" in tickers_df.columns else "Unknown"
+        overall_sentiment = row["Intent Sentiment"].capitalize()
+
+        st.markdown(
+            f"<h4 style='margin-top: 40px; margin-bottom: 5px;'>Sentiment Scores</h4>",
+            unsafe_allow_html=True
+        )
+        
+        # Display overall sentiment as a badge
+        bg_color_map = {
+            "Buy": "#b8f2c2",
+            "Sell": "#f6b6b6",
+            "Neutral": "#fff2b2"
+        }
+        bg_color = bg_color_map.get(overall_sentiment, "#eeeeee")
+
+        st.markdown(
+            f"""
+            <div style="text-align: left; margin-top: 10px;">
+                <span style="font-size: 18px; font-weight: 600;">
+                    Overall Sentiment:
+                    <span style="
+                        background-color: {bg_color};
+                        padding: 6px 14px;
+                        border-radius: 12px;
+                        color: black;
+                    ">
+                        {overall_sentiment}
+                    </span>
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        
+        # Prepare the sentiment score table
+        sentiment_cols = ["Positive", "Negative", "Neutral", "Surprise", "Joy", "Anger", "Fear", "Sadness", "Disgust"]
+        scores_df = row[sentiment_cols].T.reset_index()
+        scores_df.columns = ["Sentiment", "Score"]
+        scores_df["Score"] = pd.to_numeric(scores_df["Score"], errors="coerce").round(3)
+        scores_df["Score"] = scores_df["Score"].map("{:.3f}".format)
+
+
+        st.markdown(
+            """
+            <div style="display: flex; justify-content: flex-start; margin-top: 10px;">
+                <div style="width: 300px;">
+            """,
+            unsafe_allow_html=True
+        )
+        st.dataframe(scores_df.set_index("Sentiment"), use_container_width=False)
+        st.markdown("</div></div>", unsafe_allow_html=True)
+
+
+
+    else:
+        st.info("No sentiment scores available for T-1.")
+except Exception as e:
+    st.error(f"Error loading sentiment score table: {e}")
 
 # --- Load PNN sentiment data ---
 def load_combined_pnn_data(company: str, start_date: str, end_date: str):
@@ -141,7 +211,7 @@ def load_combined_pnn_data(company: str, start_date: str, end_date: str):
 try:
     if selected_company and position_type:
         st.markdown(
-            f"<h4 style='margin-top: 40px; margin-bottom: 5px;'>Sentiment Trend Visualization – {selected_company} ({position_type})</h4>",
+            f"<h4 style='margin-top: 40px; margin-bottom: 5px;'>Sentiment Trend Visualization</h4>",
             unsafe_allow_html=True
         )
 
