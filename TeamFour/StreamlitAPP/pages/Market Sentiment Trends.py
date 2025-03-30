@@ -125,7 +125,7 @@ if selected_company:
             st.markdown(
                 f"""
                 <div style="text-align: left; margin-top: 10px; margin-bottom: 20px;">
-                    <span style="font-size: 18px; font-weight: 600;">
+                    <span style="font-size: 22px; font-weight: 600;">
                         Overall Sentiment:
                         <span style="
                             background-color: {bg_color};
