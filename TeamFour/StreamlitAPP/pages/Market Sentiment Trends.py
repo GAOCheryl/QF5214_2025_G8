@@ -1,12 +1,41 @@
 import streamlit as st
 import plotly.express as px
 import pandas as pd
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
 import numpy as np
+import pytz
+from datetime import datetime
+from streamlit_autorefresh import st_autorefresh
+
 
 # Page Config
 st.set_page_config(page_title="Market Sentiment Trends", layout="wide")
+ 
+# Auto-refresh every 60 seconds (60000 ms)
+st_autorefresh(interval=60000, key="refresh_time")
+
+
+# Get current times
+sgt = pytz.timezone("Asia/Singapore")
+ny = pytz.timezone("America/New_York")
+now_sgt = datetime.now(sgt)
+now_ny = datetime.now(ny)
+
+# Format date and time
+date_today = now_sgt.strftime("%A, %d %B %Y")
+time_sgt = now_sgt.strftime("%H:%M")
+time_ny = now_ny.strftime("%H:%M")
+
+# Centered, minimal date/time display
+st.markdown(
+    f"""
+    <div style="text-align: center; padding: 10px 0; font-size: 18px; color: #444;">
+        <b>{date_today}</b><br>
+        SGT: {time_sgt} &nbsp;&nbsp;|&nbsp;&nbsp; New York: {time_ny}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 st.title("Market Sentiment Trends")
 
 # Sample Companies
@@ -50,27 +79,3 @@ fig = px.line(
 )
 fig.update_layout(yaxis_title="Sentiment Score", xaxis_title="Time")
 st.plotly_chart(fig, use_container_width=True)
-
-# Generate word frequencies uniquely for each company
-topics = ["Tech Stocks", "Inflation", "Federal Reserve", "Interest Rates", "Oil Prices", "Recession", "Earnings", "GDP", "Crypto", "Unemployment"]
-np.random.seed(company_seed + 1)
-frequencies = np.random.randint(10, 60, size=len(topics))
-word_freq = dict(zip(topics, frequencies))
-
-# Word Cloud in pastel color theme
-def pastel_color_func(*args, **kwargs):
-    pastel_colors = ["#AEC6CF", "#FFDAB9", "#CBAACB", "#FFB347", "#BFD8B8", "#F4C2C2", "#F0E68C"]
-    return np.random.choice(pastel_colors)
-
-wordcloud = WordCloud(
-    width=800, height=400,
-    background_color="white",
-    color_func=pastel_color_func
-).generate_from_frequencies(word_freq)
-
-# Display Word Cloud
-st.subheader(f"Financial News Topic Frequency: {selected_company}")
-fig, ax = plt.subplots(figsize=(10, 5))
-ax.imshow(wordcloud, interpolation="bilinear")
-ax.axis("off")
-st.pyplot(fig)
