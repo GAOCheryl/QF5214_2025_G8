@@ -119,7 +119,7 @@ st.markdown(f"<h5 style='margin-top: 20px;'> Selected Company: {selected_company
 # --- Sentiment vs Return Scatter Plot (1 Year) ---
 try:
     st.markdown(
-        f"<h4 style='margin-top: 40px;'>Sentiment Score vs. Daily Return</h4>",
+        f"<h4 style='margin-top: 40px;font-weight: 700;'>Sentiment Score vs. Daily Return</h4>",
         unsafe_allow_html=True
     )
 
