@@ -92,10 +92,35 @@ except Exception as e:
 def load_combined_sentiment_data(company: str, start_date: str, end_date: str):
     tables = ["nlp.sentiment_aggregated_data", "nlp.sentiment_aggregated_live", "nlp.sentiment_aggregated_newdate"]
     combined_df = pd.DataFrame()
-    
+
     for table in tables:
         query = f"""
             SELECT \"Date\", \"company\", \"Surprise\", \"Joy\", \"Anger\", \"Fear\", \"Sadness\", \"Disgust\"
+            FROM {table}
+            WHERE (\"company\" = '{company}' OR \"company\" = '${company}')
+            AND \"Date\" >= '{start_date}' AND \"Date\" <= '{end_date}'
+        """
+        try:
+            df = pd.read_sql(query, engine)
+            combined_df = pd.concat([combined_df, df], ignore_index=True)
+        except Exception as e:
+            st.warning(f"Failed to fetch from {table}: {e}")
+
+    if not combined_df.empty:
+        combined_df.drop_duplicates(subset=["Date", "company"], keep="last", inplace=True)
+        combined_df["Date"] = pd.to_datetime(combined_df["Date"], errors='coerce')
+        combined_df = combined_df.dropna(subset=["Date"])
+        return combined_df.sort_values("Date")
+    return pd.DataFrame()
+
+# --- Load PNN sentiment data ---
+def load_combined_pnn_data(company: str, start_date: str, end_date: str):
+    tables = ["nlp.sentiment_aggregated_data", "nlp.sentiment_aggregated_live", "nlp.sentiment_aggregated_newdate"]
+    combined_df = pd.DataFrame()
+
+    for table in tables:
+        query = f"""
+            SELECT \"Date\", \"company\", \"Positive\", \"Negative\", \"Neutral\"
             FROM {table}
             WHERE (\"company\" = '{company}' OR \"company\" = '${company}')
             AND \"Date\" >= '{start_date}' AND \"Date\" <= '{end_date}'
@@ -175,6 +200,43 @@ try:
         )
 
         st.plotly_chart(fig, use_container_width=True)
+
+        # --- Add PNN Chart Below ---
+        pnn_df = load_combined_pnn_data(selected_company, start_date, end_date)
+        if not pnn_df.empty:
+            for col in ["Positive", "Negative", "Neutral"]:
+                pnn_df[col] = pd.to_numeric(pnn_df[col], errors="coerce").round(3)
+            pnn_df = pnn_df.dropna(subset=["Positive", "Negative", "Neutral"], how="all")
+
+            clean_pnn_df = pnn_df.melt(
+                id_vars="Date",
+                value_vars=["Positive", "Negative", "Neutral"],
+                var_name="Sentiment",
+                value_name="Score"
+            ).dropna(subset=["Score"])
+
+            fig_pnn = px.line(
+                clean_pnn_df,
+                x="Date", y="Score", color="Sentiment",
+                markers=True,
+                template="simple_white",
+                color_discrete_map={
+                    "Positive": "#96C38D",  # medium aquamarine (darker pastel green)
+                    "Negative": "#e57373",  # soft crimson/pastel red
+                    "Neutral": "#ffdd57"    # darker sunflower pastel yellow
+                }
+            )
+            fig_pnn.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Sentiment Score",
+                yaxis=dict(tickformat=".2f", range=[0, clean_pnn_df["Score"].max() + 0.05]),
+                legend_title="",
+                height=420
+            )
+            st.plotly_chart(fig_pnn, use_container_width=True)
+        else:
+            st.info("No PNN sentiment data available for this timeframe.")
+
     else:
         st.info("No sentiment data available for this timeframe.")
 
