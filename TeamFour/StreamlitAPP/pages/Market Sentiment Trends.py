@@ -168,38 +168,62 @@ if selected_company:
     except Exception as e:
         st.error(f"Error loading sentiment data: {e}")
 
-# --- Historical Sentiment Trend Chart (1 month) ---
+# --- Timeframe Toggle & Dynamic Sentiment Trend Chart ---
 try:
-    # Calculate historical date (30 days before T-1)
-    historical_start_date = (sentiment_date_obj - timedelta(days=30)).strftime('%Y/%m/%d')
+    # Timeframe selection
+    timeframe = st.radio(
+        "Select Timeframe:",
+        ["1W", "1M"],
+        index=1,  # default = 1M
+        horizontal=True,
+        label_visibility="collapsed"
+    )
 
+    # Set number of days based on timeframe
+    days_back = 7 if timeframe == "1W" else 30
+    start_date = (sentiment_date_obj - timedelta(days=days_back)).strftime('%Y/%m/%d')
+    end_date = sentiment_date_str  # T-1
+
+    # SQL Query
     history_query = f"""
-        SELECT "Date", "Surprise", "Joy", "Anger", "Fear", "Sadness", "Disgust"
+        SELECT "Date", "company", "Surprise", "Joy", "Anger", "Fear", "Sadness", "Disgust"
         FROM nlp.sentiment_aggregated_data
         WHERE ("company" = '{selected_company}' OR "company" = '${selected_company}')
-        AND "Date" BETWEEN '{historical_start_date}' AND '{sentiment_date_str}'
+        AND "Date" >= '{start_date}' AND "Date" <= '{end_date}'
         ORDER BY "Date" ASC
     """
-
     history_df = pd.read_sql(history_query, engine)
 
     if not history_df.empty:
-        # Convert dates
-        history_df["Date"] = pd.to_datetime(history_df["Date"], format="%Y/%m/%d")
+        # Clean and format
+        history_df["Date"] = pd.to_datetime(history_df["Date"], errors='coerce')
+        history_df = history_df.dropna(subset=["Date"])
 
-        # Melt for Plotly
-        history_melted = history_df.melt(id_vars="Date", var_name="Sentiment", value_name="Score")
+        sentiment_cols = ["Surprise", "Joy", "Anger", "Fear", "Sadness", "Disgust"]
+        for col in sentiment_cols:
+            history_df[col] = pd.to_numeric(history_df[col], errors="coerce").round(3)
+
+        history_df = history_df.dropna(subset=sentiment_cols, how="all")
+
+        clean_df = history_df.melt(
+            id_vars="Date",
+            value_vars=sentiment_cols,
+            var_name="Sentiment",
+            value_name="Score"
+        ).dropna(subset=["Score"])
+
+        max_score = clean_df["Score"].max()
 
         st.markdown(
-            "<h4 style='margin-top: 40px;'>Sentiment Trend (Past 30 Days)</h4>",
+            f"<h4 style='margin-top: 30px;'>Sentiment Trend ({timeframe})</h4>",
             unsafe_allow_html=True
         )
 
         fig = px.line(
-            history_melted,
+            clean_df,
             x="Date", y="Score", color="Sentiment",
-            template="simple_white",
             markers=True,
+            template="simple_white",
             color_discrete_map={
                 "Surprise": "#FFDAB9",
                 "Joy": "#AEC6CF",
@@ -209,14 +233,18 @@ try:
                 "Disgust": "#BFD8B8"
             }
         )
+
         fig.update_layout(
             xaxis_title="Date",
             yaxis_title="Sentiment Score",
+            yaxis=dict(tickformat=".2f", range=[0, max_score + 0.05]),
             legend_title="",
-            height=400
+            height=420
         )
+
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("No historical sentiment data available for this company.")
+        st.info("No sentiment data available for this timeframe.")
+
 except Exception as e:
-    st.error(f"Error loading sentiment trend data: {e}")
+    st.error(f"Error loading sentiment chart: {e}")
