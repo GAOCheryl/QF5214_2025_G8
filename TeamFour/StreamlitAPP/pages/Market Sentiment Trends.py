@@ -25,7 +25,7 @@ st.markdown(
     f"""
     <div style="text-align: center; padding: 10px 0; font-size: 18px; color: #444;">
         <b>{date_today}</b><br>
-        SGT: {time_sgt} &nbsp;&nbsp;|&nbsp;&nbsp; New York: {time_ny}
+        Singapore: {time_sgt} &nbsp;&nbsp;|&nbsp;&nbsp; New York: {time_ny}
     </div>
     """,
     unsafe_allow_html=True
@@ -35,7 +35,6 @@ st.title("Market Sentiment Trends")
 
 # Spacer
 st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-
 
 # --- DB Connection ---
 host = "134.122.167.14"
@@ -55,11 +54,9 @@ try:
     latest_trading_date = pd.to_datetime(latest_trading_date).date()
 
     if latest_trading_date:
-        # Calculate T - 1 for sentiment
         sentiment_date_obj = latest_trading_date - timedelta(days=1)
-        sentiment_date_str = sentiment_date_obj.strftime('%Y/%m/%d')  # <-- Use slashes for sentiment table
+        sentiment_date_str = sentiment_date_obj.strftime('%Y/%m/%d')
 
-        # Label: Testing Phase
         st.markdown(
             f"""
             <div style="text-align: center; color: #999; font-size: 16px; margin-top: -10px;">
@@ -69,11 +66,10 @@ try:
             unsafe_allow_html=True
         )
 
-        # Fetch tickers from latest trading date
         ticker_query = f"""
-            SELECT DISTINCT "Ticker"
+            SELECT DISTINCT \"Ticker\"
             FROM tradingstrategy.dailytrading
-            WHERE "Date" = '{latest_trading_date}'
+            WHERE \"Date\" = '{latest_trading_date}'
             LIMIT 5
         """
         tickers_df = pd.read_sql(ticker_query, engine)
@@ -92,86 +88,55 @@ except Exception as e:
     st.error(f"Database error: {e}")
     selected_company = None
 
-# --- Sentiment Chart (from sentiment_aggregated_data) ---
-if selected_company:
-    try:
-        sentiment_query = f"""
-            SELECT "company", "Date", "Positive", "Negative", "Neutral",
-                   "Surprise", "Joy", "Anger", "Fear", "Sadness", "Disgust",
-                   "Intent Sentiment"
-            FROM nlp.sentiment_aggregated_data
-            WHERE ("company" = '{selected_company}' OR "company" = '${selected_company}')
-            AND "Date" = '{sentiment_date_str}'
-            LIMIT 1
+# --- Combine sentiment data from multiple sources ---
+def load_combined_sentiment_data(company: str, start_date: str, end_date: str):
+    tables = ["nlp.sentiment_aggregated_data", "nlp.sentiment_aggregated_live", "nlp.sentiment_aggregated_newdate"]
+    combined_df = pd.DataFrame()
+
+    for table in tables:
+        query = f"""
+            SELECT \"Date\", \"company\", \"Surprise\", \"Joy\", \"Anger\", \"Fear\", \"Sadness\", \"Disgust\"
+            FROM {table}
+            WHERE (\"company\" = '{company}' OR \"company\" = '${company}')
+            AND \"Date\" >= '{start_date}' AND \"Date\" <= '{end_date}'
         """
-        sentiment_df = pd.read_sql(sentiment_query, engine)
+        try:
+            df = pd.read_sql(query, engine)
+            combined_df = pd.concat([combined_df, df], ignore_index=True)
+        except Exception as e:
+            st.warning(f"Failed to fetch from {table}: {e}")
 
-        if not sentiment_df.empty:
-            # Extract the overall intent sentiment
-            overall_sentiment = sentiment_df["Intent Sentiment"].iloc[0]
+    if not combined_df.empty:
+        combined_df.drop_duplicates(subset=["Date", "company"], keep="last", inplace=True)
+        combined_df["Date"] = pd.to_datetime(combined_df["Date"], errors='coerce')
+        combined_df = combined_df.dropna(subset=["Date"])
+        return combined_df.sort_values("Date")
+    return pd.DataFrame()
 
-           # Capitalize first letter
-            overall_sentiment = overall_sentiment.capitalize()
+# --- Load PNN sentiment data ---
+def load_combined_pnn_data(company: str, start_date: str, end_date: str):
+    tables = ["nlp.sentiment_aggregated_data", "nlp.sentiment_aggregated_live", "nlp.sentiment_aggregated_newdate"]
+    combined_df = pd.DataFrame()
 
-            # Background color mapping for the sentiment word only
-            bg_color_map = {
-                "Buy": "#b8f2c2",      # pastel green
-                "Sell": "#f6b6b6",     # pastel red
-                "Neutral": "#fff2b2"   # pastel yellow
-            }
-            bg_color = bg_color_map.get(overall_sentiment, "#eeeeee")
+    for table in tables:
+        query = f"""
+            SELECT \"Date\", \"company\", \"Positive\", \"Negative\", \"Neutral\"
+            FROM {table}
+            WHERE (\"company\" = '{company}' OR \"company\" = '${company}')
+            AND \"Date\" >= '{start_date}' AND \"Date\" <= '{end_date}'
+        """
+        try:
+            df = pd.read_sql(query, engine)
+            combined_df = pd.concat([combined_df, df], ignore_index=True)
+        except Exception as e:
+            st.warning(f"Failed to fetch from {table}: {e}")
 
-            # Styled sentiment badge centered
-            st.markdown(
-                f"""
-                <div style="text-align: left; margin-top: 10px; margin-bottom: 20px;">
-                    <span style="font-size: 22px; font-weight: 600;">
-                        Overall Sentiment:
-                        <span style="
-                            background-color: {bg_color};
-                            padding: 6px 14px;
-                            border-radius: 12px;
-                            color: black;
-                        ">
-                            {overall_sentiment}
-                        </span>
-                    </span>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-
-
-
-            # Select and format sentiment score columns
-            display_df = sentiment_df[[
-                "Positive", "Negative", "Neutral",
-                "Surprise", "Joy", "Anger", "Fear", "Sadness", "Disgust"
-            ]].T.reset_index()
-            display_df.columns = ["Sentiment", "Score"]
-            display_df["Score"] = pd.to_numeric(display_df["Score"], errors="coerce").round(3)
-
-
-            # Show as a simple clean table
-            # Show as a smaller centered table
-            st.markdown(
-                """
-                <div style="display: flex; justify-content: center; margin-top: 10px;">
-                    <div style="width: 400px;">
-                """,
-                unsafe_allow_html=True
-            )
-
-            st.dataframe(display_df.set_index("Sentiment"), use_container_width=False)
-
-            st.markdown("</div></div>", unsafe_allow_html=True)
-
-
-        else:
-            st.warning(f"No sentiment data found for {selected_company} on {sentiment_date_str}.")
-    except Exception as e:
-        st.error(f"Error loading sentiment data: {e}")
-
+    if not combined_df.empty:
+        combined_df.drop_duplicates(subset=["Date", "company"], keep="last", inplace=True)
+        combined_df["Date"] = pd.to_datetime(combined_df["Date"], errors='coerce')
+        combined_df = combined_df.dropna(subset=["Date"])
+        return combined_df.sort_values("Date")
+    return pd.DataFrame()
 
 # --- Timeframe Toggle & Dynamic Sentiment Trend Chart ---
 try:
@@ -180,7 +145,6 @@ try:
         unsafe_allow_html=True
     )
 
-    # Place 1W/1M toggle just below
     with st.container():
         timeframe = st.radio(
             "",
@@ -190,26 +154,13 @@ try:
             label_visibility="collapsed"
         )
 
-    # Set number of days based on timeframe
     days_back = 5 if timeframe == "1W" else 30
     start_date = (sentiment_date_obj - timedelta(days=days_back)).strftime('%Y/%m/%d')
-    end_date = sentiment_date_str  # T-1
+    end_date = sentiment_date_str
 
-    # SQL Query
-    history_query = f"""
-        SELECT "Date", "company", "Surprise", "Joy", "Anger", "Fear", "Sadness", "Disgust"
-        FROM nlp.sentiment_aggregated_data
-        WHERE ("company" = '{selected_company}' OR "company" = '${selected_company}')
-        AND "Date" >= '{start_date}' AND "Date" <= '{end_date}'
-        ORDER BY "Date" ASC
-    """
-    history_df = pd.read_sql(history_query, engine)
+    history_df = load_combined_sentiment_data(selected_company, start_date, end_date)
 
     if not history_df.empty:
-        # Clean and format
-        history_df["Date"] = pd.to_datetime(history_df["Date"], errors='coerce')
-        history_df = history_df.dropna(subset=["Date"])
-
         sentiment_cols = ["Surprise", "Joy", "Anger", "Fear", "Sadness", "Disgust"]
         for col in sentiment_cols:
             history_df[col] = pd.to_numeric(history_df[col], errors="coerce").round(3)
@@ -224,7 +175,6 @@ try:
         ).dropna(subset=["Score"])
 
         max_score = clean_df["Score"].max()
-
 
         fig = px.line(
             clean_df,
@@ -250,6 +200,43 @@ try:
         )
 
         st.plotly_chart(fig, use_container_width=True)
+
+        # --- Add PNN Chart Below ---
+        pnn_df = load_combined_pnn_data(selected_company, start_date, end_date)
+        if not pnn_df.empty:
+            for col in ["Positive", "Negative", "Neutral"]:
+                pnn_df[col] = pd.to_numeric(pnn_df[col], errors="coerce").round(3)
+            pnn_df = pnn_df.dropna(subset=["Positive", "Negative", "Neutral"], how="all")
+
+            clean_pnn_df = pnn_df.melt(
+                id_vars="Date",
+                value_vars=["Positive", "Negative", "Neutral"],
+                var_name="Sentiment",
+                value_name="Score"
+            ).dropna(subset=["Score"])
+
+            fig_pnn = px.line(
+                clean_pnn_df,
+                x="Date", y="Score", color="Sentiment",
+                markers=True,
+                template="simple_white",
+                color_discrete_map={
+                    "Positive": "#96C38D",  # medium aquamarine (darker pastel green)
+                    "Negative": "#e57373",  # soft crimson/pastel red
+                    "Neutral": "#ffdd57"    # darker sunflower pastel yellow
+                }
+            )
+            fig_pnn.update_layout(
+                xaxis_title="Date",
+                yaxis_title="Sentiment Score",
+                yaxis=dict(tickformat=".2f", range=[0, clean_pnn_df["Score"].max() + 0.05]),
+                legend_title="",
+                height=420
+            )
+            st.plotly_chart(fig_pnn, use_container_width=True)
+        else:
+            st.info("No PNN sentiment data available for this timeframe.")
+
     else:
         st.info("No sentiment data available for this timeframe.")
 
