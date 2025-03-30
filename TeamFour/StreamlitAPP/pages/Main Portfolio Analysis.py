@@ -39,6 +39,25 @@ if os.path.exists(backtest_chart_path):
         html_content = f.read()
     
     # Increase height and width to fully display the chart
-    st.components.v1.html(html_content, height=2400, width=1500, scrolling=True)
+    st.components.v1.html(html_content, height=1400, width=1500, scrolling=True)
 else:
     st.error(f"Backtest result file doesn't exist. Please run backtest first. Path: {backtest_chart_path}")
+
+
+# Add IC Comparison Chart
+st.markdown("---")
+st.subheader("Cumulative IC and Rank IC Comparison Analysis")
+
+# Get IC comparison chart path
+ic_comparison_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backtest/interactive_comparison_ic_and_rank_ic.html")
+
+# Check if file exists
+if os.path.exists(ic_comparison_path):
+    # Read HTML file content
+    with open(ic_comparison_path, "r", encoding="utf-8") as f:
+        ic_html_content = f.read()
+    
+    # Display IC comparison chart
+    st.components.v1.html(ic_html_content, height=1200, width=1200, scrolling=True)
+else:
+    st.warning(f"IC comparison chart file does not exist. Path: {ic_comparison_path}")
