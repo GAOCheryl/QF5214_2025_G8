@@ -38,9 +38,6 @@ venv.bak/
 .idea/
 .vscode/
 
-# 特定于项目的缓存和临时文件
-StreamlitAPP/backtest/backtest_results/
-
 # 系统文件
 .DS_Store
 Thumbs.db 
