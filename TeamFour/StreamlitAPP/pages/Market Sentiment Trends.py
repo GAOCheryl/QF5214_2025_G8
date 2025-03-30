@@ -167,3 +167,56 @@ if selected_company:
             st.warning(f"No sentiment data found for {selected_company} on {sentiment_date_str}.")
     except Exception as e:
         st.error(f"Error loading sentiment data: {e}")
+
+# --- Historical Sentiment Trend Chart (1 month) ---
+try:
+    # Calculate historical date (30 days before T-1)
+    historical_start_date = (sentiment_date_obj - timedelta(days=30)).strftime('%Y/%m/%d')
+
+    history_query = f"""
+        SELECT "Date", "Surprise", "Joy", "Anger", "Fear", "Sadness", "Disgust"
+        FROM nlp.sentiment_aggregated_data
+        WHERE ("company" = '{selected_company}' OR "company" = '${selected_company}')
+        AND "Date" BETWEEN '{historical_start_date}' AND '{sentiment_date_str}'
+        ORDER BY "Date" ASC
+    """
+
+    history_df = pd.read_sql(history_query, engine)
+
+    if not history_df.empty:
+        # Convert dates
+        history_df["Date"] = pd.to_datetime(history_df["Date"], format="%Y/%m/%d")
+
+        # Melt for Plotly
+        history_melted = history_df.melt(id_vars="Date", var_name="Sentiment", value_name="Score")
+
+        st.markdown(
+            "<h4 style='margin-top: 40px;'>Sentiment Trend (Past 30 Days)</h4>",
+            unsafe_allow_html=True
+        )
+
+        fig = px.line(
+            history_melted,
+            x="Date", y="Score", color="Sentiment",
+            template="simple_white",
+            markers=True,
+            color_discrete_map={
+                "Surprise": "#FFDAB9",
+                "Joy": "#AEC6CF",
+                "Anger": "#F4C2C2",
+                "Fear": "#D8BFD8",
+                "Sadness": "#FFE4E1",
+                "Disgust": "#BFD8B8"
+            }
+        )
+        fig.update_layout(
+            xaxis_title="Date",
+            yaxis_title="Sentiment Score",
+            legend_title="",
+            height=400
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No historical sentiment data available for this company.")
+except Exception as e:
+    st.error(f"Error loading sentiment trend data: {e}")
