@@ -59,7 +59,7 @@ def TopN_EqualWeight(df):
         portfolio_values.append(portfolio_value)
 
         for ticker, alloc in zip(tickers, allocation):
-            weight = np.ones(TOP_N) / TOP_N # alloc / portfolio_value  
+            weight = 1 / TOP_N # alloc / portfolio_value  
             positions_list.append({'Date': date, 'Ticker': ticker, 'Allocation': alloc, 'Weight': weight})
 
     positions_df = pd.DataFrame(positions_list)
@@ -174,7 +174,7 @@ def TopN(df):
         
         total_allocation = np.sum(allocation)
         for ticker, alloc in zip(tickers, allocation):
-            weight = weight = alloc / total_allocation # alloc / portfolio_value  
+            weight = alloc / total_allocation # alloc / portfolio_value  
             positions_list.append({'Date': date, 'Ticker': ticker, 'Allocation': alloc, 'Weight': weight})
 
         positions_df = pd.DataFrame(positions_list)
@@ -213,7 +213,6 @@ max_drawdown = (results['Cumulative_Return'] / results['Cumulative_Return'].cumm
 
 print(f"Sharpe Ratio: {sharpe_ratio}")
 print(f"Max Drawdown: {max_drawdown:.2%}")
-
 
 # Strategy 3 long short strategy - equal weight
 
@@ -267,7 +266,7 @@ def TopN_LongShort(df):
         # Compute portfolio return
         long_returns = top_stocks['Actual_Return'].values
         short_returns = bottom_stocks['Actual_Return'].values
-        portfolio_return = 0.5 * np.sum(long_weights * long_returns) - 0.5 * np.sum(short_weights * short_returns)
+        portfolio_return = 0.5*np.sum(long_weights * long_returns) - 0.5*np.sum(short_weights * short_returns)
 
         # Update cumulative return (starting from 1)
         cumulative_return *= (1 + portfolio_return)
@@ -296,6 +295,7 @@ def TopN_LongShort(df):
     
     return results
 
+results = TopN_LongShort(df)
 
 # Plot cumulative return
 plt.figure(figsize=(12, 6))
@@ -314,12 +314,12 @@ epsilon = 1e-8
 portfolio_daily_returns = results['Portfolio_Return']
 excess_returns = portfolio_daily_returns - risk_free_rate
 sharpe_ratio = (excess_returns.mean() / (excess_returns.std() + epsilon)) * np.sqrt(252)
-
 max_drawdown = (results['Cumulative_Return'] / results['Cumulative_Return'].cummax() - 1).min()
 
 print(f"Sharpe Ratio: {sharpe_ratio}")
 print(f"Max Drawdown: {max_drawdown:.2%}")
 
+# Strategy 4 - long short market cap strategy
 # Selection parameter
 TOP_N = 5  # Number of top stocks selected daily for long and short
 INITIAL_CAPITAL = 1_000_000  # Initial portfolio value
@@ -434,3 +434,6 @@ max_drawdown = (results['Cumulative_Return'] / results['Cumulative_Return'].cumm
 
 print(f"Sharpe Ratio: {sharpe_ratio}")
 print(f"Max Drawdown: {max_drawdown:.2%}")
+
+
+
