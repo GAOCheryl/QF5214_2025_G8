@@ -3,9 +3,36 @@ import os
 from datetime import datetime, timedelta
 import sys
 import subprocess
+from streamlit_autorefresh import st_autorefresh
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 st.set_page_config(page_title="Portfolio Analysis", layout="wide")
+st_autorefresh(interval=60000, key="refresh_time")
+
+import pytz
+
+# --- Time Zones ---
+sgt = pytz.timezone("Asia/Singapore")
+ny = pytz.timezone("America/New_York")
+now_sgt = datetime.now(sgt)
+now_ny = datetime.now(ny)
+
+date_today = now_sgt.strftime("%A, %d %B %Y")
+time_sgt = now_sgt.strftime("%H:%M")
+time_ny = now_ny.strftime("%H:%M")
+
+# --- Date & Time Display ---
+st.markdown(
+    f"""
+    <div style="text-align: center; padding: 5px 0; font-size: 16px; color: #444;">
+        <b>{date_today}</b><br>
+        Singapore: {time_sgt} &nbsp;&nbsp;|&nbsp;&nbsp; New York: {time_ny}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
 st.title("Portfolio Analysis")
 
 # Add backtest button
