@@ -1,11 +1,13 @@
-import streamlit as st
-import os
 from datetime import datetime, timedelta
 import sys
 import subprocess
+import streamlit as st
+import os
+from streamlit_autorefresh import st_autorefresh
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 st.set_page_config(page_title="Portfolio Analysis", layout="wide")
+st_autorefresh(interval=60000, key="refresh_time")
 
 import pytz
 
@@ -29,7 +31,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
+ 
 
 st.title("Portfolio Analysis")
 
