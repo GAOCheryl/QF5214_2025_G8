@@ -584,131 +584,131 @@ from sqlalchemy import create_engine, text
 from datetime import datetime
 import os
 import json
+import pandas as pd
 from pathlib import Path
 
 analyzer = SentimentEmotionAnalyzer()
 
-db_user = "postgres"
-db_password = "qf5214"
-db_host = "134.122.167.14"
-db_port = 5555
-db_name = "QF5214"
-engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
+user = "postgres"
+pw = "qf5214"
+host = "134.122.167.14"
+port = 5555
+dbname = "QF5214"
+db = create_engine(f"postgresql://{user}:{pw}@{host}:{port}/{dbname}")
 
-progress_file = "progress_sentiment_live.json"
-if os.path.exists(progress_file):
-    with open(progress_file, "r") as f:
-        progress = json.load(f)
-    last_time = progress.get("last_created_at")
+progfile = "progress_sentiment_live.json"
+if os.path.exists(progfile):
+    with open(progfile, "r") as f:
+        prog = json.load(f)
+    lastprocessed = prog.get("last_created_at")
 else:
-    last_time = "2025-03-01 00:00:00"
+    lastprocessed = "2025-03-01 00:00:00"
 
-print(f"Last processed time: {last_time}")
+print(f"Last processed time: {lastprocessed}")
 
-query = f"""
+q = """
     SELECT company, tweet_count, text, created_at, retweets, likes, url, id
     FROM datacollection.tweets_live
-    WHERE created_at > '{last_time}'
+    WHERE created_at > '""" + lastprocessed + """'
     ORDER BY created_at ASC
 """
-with engine.connect() as conn:
-    df = pd.read_sql(text(query), conn)
+with db.connect() as conn:
+    resultdf = pd.read_sql(text(q), conn)
 
-if df.empty:
+if len(resultdf) == 0:
     print("No new data to process.")
     exit()
 
-print(f"Retrieved {len(df)} new rows from tweets_live")
+print(f"Got {len(resultdf)} new tweets")
 
-df.rename(columns={
+resultdf = resultdf.rename(columns={
     "company": "Company",
     "text": "Text",
     "created_at": "Created_At"
-}, inplace=True)
+})
 
-df['Cleaned_Text'] = df['Text'].apply(clean_text)
-df = df[df.apply(lambda row: not filter_irrelevant_comments(row['Cleaned_Text'], row['Company']), axis=1)].copy()
-df['Cleaned_Text'] = df['Cleaned_Text'].apply(remove_stock_symbols_flexible)
-df = df[df['Cleaned_Text'].apply(filter_text)].copy()
+resultdf['Cleaned_Text'] = resultdf['Text'].apply(clean_text)
+filtered = resultdf[resultdf.apply(lambda row: not filter_irrelevant_comments(row['Cleaned_Text'], row['Company']), axis=1)].copy()
+filtered['Cleaned_Text'] = filtered['Cleaned_Text'].apply(remove_stock_symbols_flexible)
+data = filtered[filtered['Cleaned_Text'].apply(filter_text)].copy()
 
-df.to_sql(
+data.to_sql(
     name="filtered_tweets_live",
-    con=engine,
+    con=db,
     if_exists="append",
     index=False,
     schema="nlp"
 )
-print(f"Filtered data inserted into nlp.filtered_tweets_live")
+print(f"Saved filtered data")
 
-df["Created_At"] = pd.to_datetime(df["Created_At"])
-df["Date"] = df["Created_At"].dt.strftime("%Y/%m/%d")
+data["Created_At"] = pd.to_datetime(data["Created_At"])
+data["Date"] = data["Created_At"].dt.strftime("%Y/%m/%d")
 
-sentiment_rows = []
-success_count = 0
-
-for i, row in enumerate(df.itertuples(index=False), start=1):
+sentdata = []
+okcount = 0
+for i, row in enumerate(data.itertuples(index=False)):
     try:
-        result = analyzer.nlp(row.Cleaned_Text)
-        sentiment_rows.append({
+        res = analyzer.nlp(row.Cleaned_Text)
+        sentdata.append({
             "company": row.Company,
             "text": row.Cleaned_Text,
             "created_at": row.Created_At.strftime("%Y-%m-%d %H:%M:%S"),
             "Date": row.Created_At.strftime("%Y/%m/%d"),
-            "Positive": result[0],
-            "Negative": result[1],
-            "Neutral": result[2],
-            "Surprise": result[3],
-            "Joy": result[4],
-            "Anger": result[5],
-            "Fear": result[6],
-            "Sadness": result[7],
-            "Disgust": result[8],
-            "Emotion Confidence": result[9],
-            "Intent Sentiment": result[10],
-            "Confidence": result[11]
+            "Positive": res[0],
+            "Negative": res[1],
+            "Neutral": res[2],
+            "Surprise": res[3],
+            "Joy": res[4],
+            "Anger": res[5],
+            "Fear": res[6],
+            "Sadness": res[7],
+            "Disgust": res[8],
+            "Emotion Confidence": res[9],
+            "Intent Sentiment": res[10],
+            "Confidence": res[11]
         })
-    except Exception as e:
-        print(f"Skip row {i} due to model error")
+    except:
+        print(f"Error on row {i}")
         continue
 
-    if len(sentiment_rows) >= 100:
-        df_sent = pd.DataFrame(sentiment_rows)
+    if len(sentdata) >= 100:
+        tmp = pd.DataFrame(sentdata)
         try:
-            df_sent.to_sql("sentiment_live", engine, if_exists="append", index=False, schema="nlp")
-            success_count += len(sentiment_rows)
-            sentiment_rows = []
+            tmp.to_sql("sentiment_live", db, if_exists="append", index=False, schema="nlp")
+            okcount = okcount + len(sentdata)
+            sentdata = []
         except Exception as e:
-            print(f"Batch insert error. Retrying one-by-one...")
-            for j, item in enumerate(sentiment_rows):
+            print(f"DB error! Trying one by one.")
+            for thing in sentdata:
                 try:
-                    pd.DataFrame([item]).to_sql("sentiment_live", engine, if_exists="append", index=False, schema="nlp")
-                    success_count += 1
-                except Exception:
+                    pd.DataFrame([thing]).to_sql("sentiment_live", db, if_exists="append", index=False, schema="nlp")
+                    okcount = okcount + 1
+                except:
                     continue
-            sentiment_rows = []
+            sentdata = []
 
-if sentiment_rows:
-    df_sent = pd.DataFrame(sentiment_rows)
+if len(sentdata) > 0:
+    tmp = pd.DataFrame(sentdata)
     try:
-        df_sent.to_sql("sentiment_live", engine, if_exists="append", index=False, schema="nlp")
-        success_count += len(sentiment_rows)
-    except Exception as e:
-        print(f"Final batch insert error. Retrying one-by-one.")
-        for item in sentiment_rows:
+        tmp.to_sql("sentiment_live", db, if_exists="append", index=False, schema="nlp")
+        okcount = okcount + len(sentdata)
+    except:
+        print(f"Final save error! Going one by one.")
+        for thing in sentdata:
             try:
-                pd.DataFrame([item]).to_sql("sentiment_live", engine, if_exists="append", index=False, schema="nlp")
-                success_count += 1
-            except Exception:
+                pd.DataFrame([thing]).to_sql("sentiment_live", db, if_exists="append", index=False, schema="nlp")
+                okcount = okcount + 1
+            except:
                 continue
 
-print(f"Inserted {success_count} rows into sentiment_live")
+print(f"Total saved: {okcount}")
 
-latest_time = df["Created_At"].max().strftime("%Y-%m-%d %H:%M:%S")
-with open(progress_file, "w") as f:
-    json.dump({"last_created_at": latest_time}, f)
-print(f"Updated checkpoint: {latest_time}")
+newest = data["Created_At"].max().strftime("%Y-%m-%d %H:%M:%S")
+with open(progfile, "w") as f:
+    json.dump({"last_created_at": newest}, f)
+print(f"Checkpoint updated: {newest}")
 
-agg_query = """
+sql = """
     SELECT company, "Date", 
            CAST("Positive" AS FLOAT), CAST("Negative" AS FLOAT), CAST("Neutral" AS FLOAT), 
            CAST("Surprise" AS FLOAT), CAST("Joy" AS FLOAT), CAST("Anger" AS FLOAT), 
@@ -716,9 +716,9 @@ agg_query = """
            "Intent Sentiment"
     FROM nlp.sentiment_live
 """
-agg_df = pd.read_sql(text(agg_query), engine)
+allsents = pd.read_sql(text(sql), db)
 
-aggregated_df = agg_df.groupby(["company", "Date"]).agg({
+dailystats = allsents.groupby(["company", "Date"]).agg({
     "Positive": "mean",
     "Negative": "mean",
     "Neutral": "mean",
@@ -731,11 +731,11 @@ aggregated_df = agg_df.groupby(["company", "Date"]).agg({
     "Intent Sentiment": lambda x: x.value_counts().idxmax()
 }).reset_index()
 
-aggregated_df.to_sql(
+dailystats.to_sql(
     name="sentiment_aggregated_live",
-    con=engine,
+    con=db,
     if_exists="append",
     index=False,
     schema="nlp"
 )
-print("Aggregated sentiment data written to sentiment_aggregated_live table.")
+print("All done! Stats saved.")
