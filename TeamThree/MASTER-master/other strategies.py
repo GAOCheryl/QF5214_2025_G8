@@ -4,7 +4,9 @@ import matplotlib.pyplot as plt
 
 # Copy the dataset to avoid modifying the original data
 # df = df_predictions.copy()
-df = pd.read_csv("predictions.csv")
+#df = pd.read_csv("data/Output/predictions_with_sentiment.csv")
+#df = pd.read_csv("data/Output/predictions_without_sentiment.csv")
+df = pd.read_csv("data/Output/updated_predictions.csv")
 
 
 # Strategy 1 equal weight strategy
@@ -65,7 +67,7 @@ def TopN_EqualWeight(df):
     positions_df = pd.DataFrame(positions_list)
     
     # store required data
-    positions_df.to_csv('TopN_EqualWeight_position.csv', index=False)
+    positions_df.to_csv('data/Output/TopN_EqualWeight_position.csv', index=False)
 
     # backtest result
     results = pd.DataFrame({'Date': unique_dates, 'Portfolio_Value': portfolio_values, 'Portfolio_Return': portfolio_returns})
@@ -91,7 +93,7 @@ risk_free_rate = 0.04 / 252
 epsilon = 1e-8
 portfolio_daily_returns = results['Cumulative_Return'].pct_change().dropna()
 excess_returns = portfolio_daily_returns - risk_free_rate
-sharpe_ratio = (excess_returns.mean() / (excess_returns.std() + epsilon)) * np.sqrt(252)
+sharpe_ratio = (excess_returns.mean() / (excess_returns.std() + epsilon)) #* np.sqrt(252)
 
 max_drawdown = (results['Cumulative_Return'] / results['Cumulative_Return'].cummax() - 1).min()
 
@@ -180,7 +182,7 @@ def TopN(df):
         positions_df = pd.DataFrame(positions_list)
     
     # store required data
-    positions_df.to_csv('TopN_marketcap_position.csv', index=False)
+    positions_df.to_csv('data/Output/TopN_marketcap_position.csv', index=False)
     # Convert results to DataFrame
     results = pd.DataFrame({'Date': unique_dates, 'Portfolio_Value': portfolio_values, 'Portfolio_Return': portfolio_returns})
     results['Cumulative_Return'] = results['Portfolio_Value'] / INITIAL_CAPITAL
@@ -207,7 +209,7 @@ risk_free_rate = 0.04 / 252
 epsilon = 1e-8  # Small value to avoid division by zero
 portfolio_daily_returns = results['Cumulative_Return'].pct_change().dropna() # results['Portfolio_Return']
 excess_returns = portfolio_daily_returns - risk_free_rate
-sharpe_ratio = (excess_returns.mean() / (excess_returns.std() + epsilon)) * np.sqrt(252)
+sharpe_ratio = (excess_returns.mean() / (excess_returns.std() + epsilon)) #* np.sqrt(252)
 
 max_drawdown = (results['Cumulative_Return'] / results['Cumulative_Return'].cummax() - 1).min()
 
@@ -291,7 +293,7 @@ def TopN_LongShort(df):
     
     # Save results to CSV
     # results.to_csv(output_csv, index=False)
-    position_df.to_csv('TopN_LongShort_position.csv', index=False)
+    position_df.to_csv('data/Output/TopN_LongShort_position.csv', index=False)
     
     return results
 
@@ -313,11 +315,13 @@ risk_free_rate = 0.04 / 252
 epsilon = 1e-8
 portfolio_daily_returns = results['Portfolio_Return']
 excess_returns = portfolio_daily_returns - risk_free_rate
-sharpe_ratio = (excess_returns.mean() / (excess_returns.std() + epsilon)) * np.sqrt(252)
+sharpe_ratio = (excess_returns.mean() / (excess_returns.std() + epsilon)) #* np.sqrt(252)
 max_drawdown = (results['Cumulative_Return'] / results['Cumulative_Return'].cummax() - 1).min()
 
 print(f"Sharpe Ratio: {sharpe_ratio}")
 print(f"Max Drawdown: {max_drawdown:.2%}")
+
+
 
 # Strategy 4 - long short market cap strategy
 # Selection parameter
@@ -405,7 +409,7 @@ def TopN_LongShort_Marketcap(df):
     
     # Save results to CSV
     # results.to_csv(output_csv, index=False)
-    position_df.to_csv('TopN_LongShort_Marketcap_position.csv', index=False)
+    position_df.to_csv('data/Output/TopN_LongShort_Marketcap_position.csv', index=False)
     
     return results
 
@@ -429,7 +433,7 @@ risk_free_rate = 0.04 / 252
 epsilon = 1e-8
 portfolio_daily_returns = results['Portfolio_Return']
 excess_returns = portfolio_daily_returns - risk_free_rate
-sharpe_ratio = (excess_returns.mean() / (excess_returns.std() + epsilon)) * np.sqrt(252)
+sharpe_ratio = (excess_returns.mean() / (excess_returns.std() + epsilon)) #* np.sqrt(252)
 max_drawdown = (results['Cumulative_Return'] / results['Cumulative_Return'].cummax() - 1).min()
 
 print(f"Sharpe Ratio: {sharpe_ratio}")
