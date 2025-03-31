@@ -502,137 +502,139 @@ from pathlib import Path
 
 analyzer = SentimentEmotionAnalyzer()
 
-db_user = "postgres"
-db_password = "qf5214"
-db_host = "134.122.167.14"
-db_port = 5555
-db_name = "QF5214"
-engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
+user = "postgres"
+pw = "qf5214"
+host = "134.122.167.14"
+port = 5555
+dbname = "QF5214"
 
-input_files = [
-    "filtered_tweets_nasdaq100_one.csv"
+db = create_engine(f"postgresql://{user}:{pw}@{host}:{port}/{dbname}")
+
+files = [
+    "filtered_tweets_nasdaq100_one.csv",
+    "filtered_tweets_nasdaq100_two.csv",
 ]
-base_path = "C:/Users/zly/Desktop/"
+path = "C:/Users/zly/Desktop/"
 
-def get_breakpoint_file(filename):
+def getbpfile(filename):
     stem = Path(filename).stem
     return f"progress_{stem}.json"
 
-for file_name in input_files:
-    file_path = os.path.join(base_path, file_name)
-    print(f"Starting file: {file_name}")
+for fname in files:
+    fpath = os.path.join(path, fname)
+    print(f"Starting file: {fname}")
 
-    bp_file = get_breakpoint_file(file_name)
+    bpfile = getbpfile(fname)
 
-    if os.path.exists(bp_file):
-        with open(bp_file, "r") as f:
-            progress = json.load(f)
-        start_index = progress.get("last_index", 0)
+    if os.path.exists(bpfile):
+        with open(bpfile, "r") as f:
+            prog = json.load(f)
+        startidx = prog.get("last_index", 0)
     else:
-        start_index = 0
+        startidx = 0
 
-    df = pd.read_csv(file_path)
-    df.rename(columns={"Company": "company", "Cleaned_Text": "text", "Created_At": "created_at"}, inplace=True)
-    df["created_at"] = pd.to_datetime(df["created_at"], format="%a %b %d %H:%M:%S %z %Y")
-    df["Date"] = df["created_at"].dt.strftime("%Y/%m/%d")
+    resultdf = pd.read_csv(fpath)
+    resultdf.rename(columns={"Company": "company", "Cleaned_Text": "text", "Created_At": "created_at"}, inplace=True)
+    resultdf["created_at"] = pd.to_datetime(resultdf["created_at"], format="%a %b %d %H:%M:%S %z %Y")
+    resultdf["Date"] = resultdf["created_at"].dt.strftime("%Y/%m/%d")
 
-    total_rows = len(df)
-    success_count = 0
-    to_insert = []
+    total = len(resultdf)
+    okcount = 0
+    sentdata = []
 
-    for i, row in enumerate(df.itertuples(index=False), start=0):
-        if i < start_index:
+    for i, row in enumerate(resultdf.itertuples(index=False)):
+        if i < startidx:
             continue
 
         company = row.company
         text = str(row.text)
-        created_at_dt = row.created_at
-        created_at = created_at_dt.strftime("%Y-%m-%d %H:%M:%S")
-        date_str = created_at_dt.strftime("%Y/%m/%d")
+        dt = row.created_at
+        created = dt.strftime("%Y-%m-%d %H:%M:%S")
+        date = dt.strftime("%Y/%m/%d")
 
         try:
-            result = analyzer.nlp(text)
-            to_insert.append({
+            res = analyzer.nlp(text)
+            sentdata.append({
                 "company": company,
                 "text": text,
-                "created_at": created_at,
-                "Date": date_str,
-                "Positive": result[0],
-                "Negative": result[1],
-                "Neutral": result[2],
-                "Surprise": result[3],
-                "Joy": result[4],
-                "Anger": result[5],
-                "Fear": result[6],
-                "Sadness": result[7],
-                "Disgust": result[8],
-                "Emotion Confidence": result[9],
-                "Intent Sentiment": result[10],
-                "Confidence": result[11]
+                "created_at": created,
+                "Date": date,
+                "Positive": res[0],
+                "Negative": res[1],
+                "Neutral": res[2],
+                "Surprise": res[3],
+                "Joy": res[4],
+                "Anger": res[5],
+                "Fear": res[6],
+                "Sadness": res[7],
+                "Disgust": res[8],
+                "Emotion Confidence": res[9],
+                "Intent Sentiment": res[10],
+                "Confidence": res[11]
             })
-        except Exception as e:
-            print(f"Skip row {i} due to model error.")
+        except:
+            print(f"Error on row {i}")
 
-        if len(to_insert) >= 100:
-            df_batch = pd.DataFrame(to_insert)
-            table_name = f"sentiment_raw_data_{Path(file_name).stem.split('_')[-1]}"
+        if len(sentdata) >= 100:
+            tmp = pd.DataFrame(sentdata)
+            tblname = f"sentiment_raw_data_{Path(fname).stem.split('_')[-1]}"
             try:
-                df_batch.to_sql(
-                    name=table_name,
-                    con=engine,
+                tmp.to_sql(
+                    name=tblname,
+                    con=db,
                     if_exists="append",
                     index=False,
                     schema="nlp"
                 )
-            except Exception as e:
-                print(f"Batch insert failed at row {i}, retrying single inserts.")
-                for j, item in enumerate(to_insert):
+            except:
+                print(f"DB error at row {i}, trying one by one.")
+                for thing in sentdata:
                     try:
-                        pd.DataFrame([item]).to_sql(
-                            name=table_name,
-                            con=engine,
+                        pd.DataFrame([thing]).to_sql(
+                            name=tblname,
+                            con=db,
                             if_exists="append",
                             index=False,
                             schema="nlp"
                         )
-                    except Exception as e2:
-                        actual_row = i - len(to_insert) + j + 1
-                        print(f"Single insert failed at row {actual_row}")
-            success_count += len(to_insert)
-            to_insert = []
+                    except:
+                        realrow = i - len(sentdata) + sentdata.index(thing) + 1
+                        print(f"Failed at row {realrow}")
+            okcount = okcount + len(sentdata)
+            sentdata = []
 
-            if success_count % 1000 == 0:
-                print(f"Inserted {success_count} rows from {file_name}")
+            if okcount % 1000 == 0:
+                print(f"Saved {okcount} rows from {fname}")
 
-            with open(bp_file, "w") as f:
+            with open(bpfile, "w") as f:
                 json.dump({"last_index": i + 1}, f)
 
-    if to_insert:
-        df_batch = pd.DataFrame(to_insert)
-        table_name = f"sentiment_raw_data_{Path(file_name).stem.split('_')[-1]}"
+    if len(sentdata) > 0:
+        tmp = pd.DataFrame(sentdata)
+        tblname = f"sentiment_raw_data_{Path(fname).stem.split('_')[-1]}"
         try:
-            df_batch.to_sql(
-                name=table_name,
-                con=engine,
+            tmp.to_sql(
+                name=tblname,
+                con=db,
                 if_exists="append",
                 index=False,
                 schema="nlp"
             )
-        except Exception as e:
-            print(f"Final batch insert failed, retrying single inserts.")
-            for item in to_insert:
+        except:
+            print(f"Final save error! Going one by one.")
+            for thing in sentdata:
                 try:
-                    pd.DataFrame([item]).to_sql(
-                        name=table_name,
-                        con=engine,
+                    pd.DataFrame([thing]).to_sql(
+                        name=tblname,
+                        con=db,
                         if_exists="append",
                         index=False,
                         schema="nlp"
                     )
-                except Exception as e2:
+                except:
                     print(f"Final single insert failed.")
-        success_count += len(to_insert)
-        with open(bp_file, "w") as f:
-            json.dump({"last_index": total_rows}, f)
+        okcount = okcount + len(sentdata)
+        with open(bpfile, "w") as f:
+            json.dump({"last_index": total}, f)
 
-    print(f"Finished processing {file_name}, total inserted: {success_count} rows.")
+    print(f"Done with {fname}, saved {okcount} rows.")
