@@ -211,23 +211,23 @@ with open(f'data/input/valid_input_without_sentiment.pkl', 'rb') as f:
 with open(f'data/input/testing_input_without_sentiment.pkl', 'rb') as f:
     dl_test = pickle.load(f)
 
-
+'''
 import time
 import itertools
 import pandas as pd
 
 # Define your hyperparameter lists
-d_model_list   = [128, 256]
-t_nhead_list   = [4, 8]
-s_nhead_list   = [2, 4]
+d_model_list   = [128, 256, 512]
+t_nhead_list   = [4]
+s_nhead_list   = [2]
 dropout_list   = [0.7]
-beta_list      = [5, 10]
-lr_list        = [1e-4]
+beta_list      = [5]
+lr_list        = [1e-3, 1e-4, 1e-5]
 
 
 # Fixed parameters
-d_feat = 9
-gate_input_start_index = 9
+d_feat = 97
+gate_input_start_index = 97
 gate_input_end_index = 121 
 n_epoch = 100
 GPU = 0
@@ -307,24 +307,24 @@ for d_model, t_nhead, s_nhead, dropout, beta, lr in itertools.product(
         'mean_RICIR': mean_ricir
     })
     
-# Convert the results to a DataFrame and save to CSV
-df_results = pd.DataFrame(results)
-df_results.to_csv("data/Output/hyperparameter_without_sentiment_results.csv", index=False)
-print("Grid search results saved to data/Output/hyperparameter_without_sentiment_results.csv")
+    # Convert the results to a DataFrame and save to CSV
+    df_results = pd.DataFrame(results)
+    df_results.to_csv("data/Output/hyperparameter_without_sentiment_results.csv", index=False)
+    print("Grid search results saved to data/Output/hyperparameter_without_sentiment_results.csv")
 
 '''
-d_feat = 9
-d_model = 256
+d_feat = 97
+d_model = 128
 t_nhead = 4
 s_nhead = 2
-dropout = 0.5
-gate_input_start_index = 9
+dropout = 0.7
+gate_input_start_index = 97
 gate_input_end_index = 121 
 
 beta = 5
 
 n_epoch = 100
-lr = 1e-4
+lr = 1e-5
 GPU = 0
 train_stop_loss_thred = 0.0007
 
@@ -345,7 +345,7 @@ def get_next_trading_day(current_date, trading_dates):
         return trading_dates[pos]
     else:
         return None
-    
+'''
 ##Training
 ######################################################################################
 for seed in [0]: # , 1, 2, 3, 4
@@ -380,12 +380,12 @@ for seed in [0]: # , 1, 2, 3, 4
 
     
 ######################################################################################
-
+'''
 
 # Load and Test
 ######################################################################################
 for seed in [0]:
-    param_path = f'model/model_training_{seed}.pkl'
+    param_path = f'model/model_training_without_sentiment_{seed}.pkl'
 
     print(f'Model Loaded from {param_path}')
     model = MASTERModel(
@@ -447,9 +447,18 @@ for seed in [0]:
     )
     df_merged_predictions.rename(columns={"datetime": "Date", "instrument": "Ticker"}, inplace=True)
 
+    # Merge only the Date, Ticker, and Return columns from df_all.
+    df_temp = df_all[['Date', 'Ticker', 'Return']]
+
+    # Merge on 'Date' and 'Ticker' columns (using left join to keep all rows in df_merged_predictions)
+    df_merged_predictions = df_merged_predictions.drop(columns=['Actual_Return'], errors='ignore') \
+        .merge(df_temp, on=['Date', 'Ticker'], how='left')
+
+    # Rename the merged column to 'Actual_Return'
+    df_merged_predictions.rename(columns={'Return': 'Actual_Return'}, inplace=True)
 
     # To CSV
-    csv_path = "predictions_without_sentiment.csv"
+    csv_path = "data/Output/predictions_without_sentiment.csv"
     df_merged_predictions.to_csv(csv_path, index=False)
     ######
        
@@ -463,5 +472,3 @@ print("RICIR: {:.4f} pm {:.4f}".format(np.mean(ricir), np.std(ricir)))
 
 ###### 3
 print(df_merged_predictions.head())
-
-'''

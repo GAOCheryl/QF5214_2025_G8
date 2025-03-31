@@ -303,11 +303,11 @@ import itertools
 import pandas as pd
 
 # Define your hyperparameter lists
-d_model_list   = [128, 256]
-t_nhead_list   = [4, 8]
-s_nhead_list   = [2, 4]
+d_model_list   = [64]
+t_nhead_list   = [4, 8, 12, 16]
+s_nhead_list   = [2, 4, 6, 8]
 dropout_list   = [0.7]
-beta_list      = [5, 10]
+beta_list      = [5, 10, 15]
 lr_list        = [1e-4]
 
 
@@ -393,10 +393,10 @@ for d_model, t_nhead, s_nhead, dropout, beta, lr in itertools.product(
         'mean_RICIR': mean_ricir
     })
     
-# Convert the results to a DataFrame and save to CSV
-df_results = pd.DataFrame(results)
-df_results.to_csv("data/Output/hyperparameter_sentiment_results.csv", index=False)
-print("Grid search results saved to data/Output/hyperparameter_sentiment_results.csv")
+    # Convert the results to a DataFrame and save to CSV
+    df_results = pd.DataFrame(results)
+    df_results.to_csv("data/Output/hyperparameter_sentiment_results.csv", index=False)
+    print("Grid search results saved to data/Output/hyperparameter_sentiment_results.csv")
 
 
 '''
