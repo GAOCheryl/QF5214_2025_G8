@@ -6,9 +6,6 @@ from tqdm import tqdm
 import sys
 from pathlib import Path
 import datetime
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from StreamlitAPP.utils.database import read_data, write_data
 from StreamlitAPP.utils.visualization import plot_results, calculate_performance_metrics
@@ -109,7 +106,7 @@ merged_df.reset_index(drop=True, inplace=True)
 
 
 #%% 向量化回测
-def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF5214.visualization.backtest_results'):
+def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF5214.visualization.backtest_results', is_long_short=True):
     """
     执行向量化回测
     
@@ -118,6 +115,7 @@ def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF
         title: str, 回测标题
         save_results: bool, 是否保存结果
         data_source: str, 保存结果的数据库表路径，默认为'QF5214.visualization.backtest_results'
+        is_long_short: bool, 是否为多空回测，默认为True。如果为False，则只使用多头仓位
         
     Returns:
         tuple: (evaluate, equity_curve, fig)
@@ -136,18 +134,32 @@ def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF
     if 'Date' in merged_df.columns and merged_df['Date'].dtype != 'datetime64[ns]':
         merged_df['Date'] = pd.to_datetime(merged_df['Date'])
     
-    # 从合并数据中提取所需信息
+    # 根据回测类型处理持仓数据
     position_df = merged_df[['Date', 'Ticker', 'Weight', 'Position_Type']].copy()
+    
+    if is_long_short:
+        # 多空回测：所有权重除以2
+        position_df['Weight'] = position_df['Weight'] / 2
+        print("执行多空回测，所有权重已除以2")
+        prefix = "long-short"
+    else:
+        # 单多回测：只使用多头仓位
+        position_df = position_df[position_df['Position_Type'] == 'Long']
+        print("执行单多回测，只使用多头仓位")
+        prefix = "long-only"
     
     # 获取所有交易日期
     all_dates = sorted(position_df['Date'].unique())
     
-    # 初始化净值曲线，添加基准指数
-    equity_curve = pd.DataFrame(index=all_dates, columns=['Strategy', 'NASDAQ100', 'Excess_Return'])
+    # 初始化净值曲线，根据回测类型决定是否添加基准指数
+    if is_long_short:
+        equity_curve = pd.DataFrame(index=all_dates, columns=['Strategy'])
+    else:
+        equity_curve = pd.DataFrame(index=all_dates, columns=['Strategy', 'NASDAQ100', 'Excess_Return'])
     equity_curve.fillna(1.0, inplace=True)
     
     # 按日期遍历计算收益
-    for i in range(1, len(all_dates)):
+    for i in tqdm(range(1, len(all_dates))):
         current_date = all_dates[i]
         prev_date = all_dates[i-1]
         
@@ -158,25 +170,23 @@ def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF
         current_data = merged_df[merged_df['Date'] == current_date]
         prev_data = merged_df[merged_df['Date'] == prev_date]
         
-        # 获取当天和前一天的指数数据
-        current_index = current_data['Adj_Close_NASDAQ100'].iloc[0] if not current_data.empty else None
-        prev_index = prev_data['Adj_Close_NASDAQ100'].iloc[0] if not prev_data.empty else None
-        
-        # 计算基准指数收益率
-        if current_index is not None and prev_index is not None and prev_index > 0:
-            index_return = current_index / prev_index - 1
-            equity_curve.loc[current_date, 'NASDAQ100'] = equity_curve.loc[prev_date, 'NASDAQ100'] * (1 + index_return)
-        else:
-            # 如果缺少数据，净值保持不变
-            equity_curve.loc[current_date, 'NASDAQ100'] = equity_curve.loc[prev_date, 'NASDAQ100']
+        # 如果不是多空回测，计算基准指数收益率
+        if not is_long_short:
+            current_index = current_data['Adj_Close_NASDAQ100'].iloc[0] if not current_data.empty else None
+            prev_index = prev_data['Adj_Close_NASDAQ100'].iloc[0] if not prev_data.empty else None
+            
+            if current_index is not None and prev_index is not None and prev_index > 0:
+                index_return = current_index / prev_index - 1
+                equity_curve.loc[current_date, 'NASDAQ100'] = equity_curve.loc[prev_date, 'NASDAQ100'] * (1 + index_return)
+            else:
+                equity_curve.loc[current_date, 'NASDAQ100'] = equity_curve.loc[prev_date, 'NASDAQ100']
         
         # 检查是否有足够的数据
         if prev_positions.empty or current_data.empty or prev_data.empty:
             print(f"警告: {prev_date}或{current_date}缺少必要数据，跳过该日计算")
-            # 如果缺少数据，净值保持不变
             equity_curve.loc[current_date, 'Strategy'] = equity_curve.loc[prev_date, 'Strategy']
-            # 超额收益也保持不变
-            equity_curve.loc[current_date, 'Excess_Return'] = equity_curve.loc[prev_date, 'Excess_Return']
+            if not is_long_short:
+                equity_curve.loc[current_date, 'Excess_Return'] = equity_curve.loc[prev_date, 'Excess_Return']
             continue
         
         # 合并持仓和价格数据
@@ -200,8 +210,8 @@ def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF
         if merged_positions.empty:
             print(f"警告: {current_date}没有可用的股票数据，跳过该日计算")
             equity_curve.loc[current_date, 'Strategy'] = equity_curve.loc[prev_date, 'Strategy']
-            # 超额收益也保持不变
-            equity_curve.loc[current_date, 'Excess_Return'] = equity_curve.loc[prev_date, 'Excess_Return']
+            if not is_long_short:
+                equity_curve.loc[current_date, 'Excess_Return'] = equity_curve.loc[prev_date, 'Excess_Return']
             continue
         
         # 计算每支股票的收益率
@@ -216,14 +226,12 @@ def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF
         # 更新净值曲线
         equity_curve.loc[current_date, 'Strategy'] = equity_curve.loc[prev_date, 'Strategy'] * (1 + day_return)
         
-        # 计算当天的超额收益率
-        strategy_return = equity_curve.loc[current_date, 'Strategy'] / equity_curve.loc[prev_date, 'Strategy'] - 1
-        benchmark_return = equity_curve.loc[current_date, 'NASDAQ100'] / equity_curve.loc[prev_date, 'NASDAQ100'] - 1
-        #print('日期',current_date,'策略收益率',strategy_return,'基准收益率',benchmark_return)
-        excess_return = strategy_return - benchmark_return
-        
-        # 更新累积超额收益
-        equity_curve.loc[current_date, 'Excess_Return'] = equity_curve.loc[prev_date, 'Excess_Return'] * (1 + excess_return)
+        # 如果不是多空回测，计算超额收益
+        if not is_long_short:
+            strategy_return = equity_curve.loc[current_date, 'Strategy'] / equity_curve.loc[prev_date, 'Strategy'] - 1
+            benchmark_return = equity_curve.loc[current_date, 'NASDAQ100'] / equity_curve.loc[prev_date, 'NASDAQ100'] - 1
+            excess_return = strategy_return - benchmark_return
+            equity_curve.loc[current_date, 'Excess_Return'] = equity_curve.loc[prev_date, 'Excess_Return'] * (1 + excess_return)
     
     # 计算滚动指标
     # 首先计算日收益率
@@ -239,12 +247,14 @@ def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF
         rolling_std = rolling_returns.std() * np.sqrt(252)  # 年化
         equity_curve['Rolling_3M_Sharpe'] = rolling_mean / rolling_std
         
-        # 计算滚动3个月Beta
-        if 'NASDAQ100' in daily_returns.columns:
-            # 使用协方差计算beta
-            rolling_cov = daily_returns['Strategy'].rolling(window=rolling_window).cov(daily_returns['NASDAQ100'])
-            rolling_var = daily_returns['NASDAQ100'].rolling(window=rolling_window).var()
-            equity_curve['Rolling_3M_Beta'] = rolling_cov / rolling_var
+        # 只在单多回测时计算Beta
+        if not is_long_short:
+            # 计算滚动3个月Beta
+            if 'NASDAQ100' in daily_returns.columns:
+                # 使用协方差计算beta
+                rolling_cov = daily_returns['Strategy'].rolling(window=rolling_window).cov(daily_returns['NASDAQ100'])
+                rolling_var = daily_returns['NASDAQ100'].rolling(window=rolling_window).var()
+                equity_curve['Rolling_3M_Beta'] = rolling_cov / rolling_var
     
     # 计算评估指标
     evaluate = calculate_performance_metrics(equity_curve)
@@ -257,15 +267,15 @@ def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF
         # 保存到数据库
         try:
             # 保存净值曲线
-            write_data(equity_curve_db, f"{data_source}_equity")
-            print(f"净值曲线已保存到 {data_source}_equity 表中")
+            write_data(equity_curve_db, f"{data_source}_{prefix}_equity")
+            print(f"净值曲线已保存到 {data_source}_{prefix}_equity 表中")
             
             # 重置索引以便将类型作为列保存到数据库
             evaluate_db = evaluate.reset_index().rename(columns={'index': 'Type'})
             
             # 保存评估指标
-            write_data(evaluate_db, f"{data_source}_metrics")
-            print(f"评估指标已保存到 {data_source}_metrics 表中")
+            write_data(evaluate_db, f"{data_source}_{prefix}_metrics")
+            print(f"评估指标已保存到 {data_source}_{prefix}_metrics 表中")
         except Exception as e:
             print(f"保存数据到数据库失败: {str(e)}")
             
@@ -275,54 +285,63 @@ def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF
                 os.makedirs(result_dir)
             
             # 备份保存到文件
-            equity_curve.to_csv(os.path.join(result_dir, "backtest_equity.csv"))
-            evaluate.to_csv(os.path.join(result_dir, "backtest_metrics.csv"))
+            equity_curve.to_csv(os.path.join(result_dir, f"{prefix}_backtest_equity.csv"))
+            evaluate.to_csv(os.path.join(result_dir, f"{prefix}_backtest_metrics.csv"))
             print(f"数据已备份保存到 {result_dir} 目录")
     
     # 绘制结果
-    fig = plot_results(equity_curve, evaluate, title)
+    fig = plot_results(equity_curve, evaluate, title, is_long_short=is_long_short)
     
     # 如果成功创建了图形，可以保存图形文件
     if fig is not None and save_results:
         result_dir = 'backtest_results'
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
-        fig.write_html(os.path.join(result_dir, "backtest_chart.html"))
+        fig.write_html(os.path.join(result_dir, f"{prefix}_backtest_chart.html"))
     
     return evaluate, equity_curve, fig
 
-#%%
-# 执行回测
-print("开始执行回测...")
-evaluate, equity_curve, fig = run_backtest(merged_df, title="Backtest")
-
-# 打印结果
-if evaluate is not None:
-    print("\n======== 回测结果 ========")
-    print("评估指标:")
-    print(evaluate)
-    print("回测完成，结果已保存。")
 
 #%%
-
 # 添加一个main函数，方便脚本单独运行
 def main():
     try:
         # 使用已经在文件开头准备好的merged_df直接进行回测
         global merged_df
         
-        # 执行回测
-        print("开始执行回测...")
-        evaluate, equity_curve, fig = run_backtest(merged_df, title="Backtest")
+        # 执行多空回测
+        print("开始执行多空回测...")
+        evaluate_long_short, equity_curve_long_short, fig_long_short = run_backtest(
+            merged_df, 
+            title="Long-Short Strategy", 
+            is_long_short=True,
+        )
         
-        # 打印结果
-        if evaluate is not None:
-            print("\n======== 回测结果 ========")
+        # 执行单多回测
+        print("\n开始执行单多回测...")
+        evaluate_long_only, equity_curve_long_only, fig_long_only = run_backtest(
+            merged_df, 
+            title="Long-Only Strategy", 
+            is_long_short=False,
+        )
+        
+        # 打印多空回测结果
+        if evaluate_long_short is not None:
+            print("\n======== 多空回测结果 ========")
             print("评估指标:")
-            print(evaluate)
-            print("回测完成，结果已保存。")
+            print(evaluate_long_short)
         else:
-            print("回测失败，未能生成评估指标。")
+            print("多空回测失败，未能生成评估指标。")
+            
+        # 打印单多回测结果
+        if evaluate_long_only is not None:
+            print("\n======== 单多回测结果 ========")
+            print("评估指标:")
+            print(evaluate_long_only)
+        else:
+            print("单多回测失败，未能生成评估指标。")
+            
+        print("回测完成，结果已保存。")
             
     except Exception as e:
         print(f"回测过程中发生错误: {str(e)}")

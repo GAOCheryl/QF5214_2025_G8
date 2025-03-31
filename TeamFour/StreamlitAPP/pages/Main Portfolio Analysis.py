@@ -57,18 +57,26 @@ with col1:
             st.error(f"Error occurred: {str(e)}")
 
 # Use correct relative path
-backtest_chart_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backtest/backtest_results/backtest_chart.html")
+long_only_backtest_chart_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),r"backtest/backtest_results/long-only_backtest_chart.html")
+long_short_backtest_chart_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), r"backtest/backtest_results/long-short_backtest_chart.html")
 
-# Check if file exists
-if os.path.exists(backtest_chart_path):
-    # Read HTML file content
-    with open(backtest_chart_path, "r", encoding="utf-8") as f:
+# 展示单多回测结果
+st.subheader("Long-only Strategy Backtest Results")
+if os.path.exists(long_only_backtest_chart_path):
+    with open(long_only_backtest_chart_path, "r", encoding="utf-8") as f:
         html_content = f.read()
-    
-    # Increase height and width to fully display the chart
-    st.components.v1.html(html_content, height=1400, width=1500, scrolling=True)
+    st.components.v1.html(html_content, height=1400, width=1600, scrolling=True)
 else:
-    st.error(f"Backtest result file doesn't exist. Please run backtest first. Path: {backtest_chart_path}")
+    st.error(f"Long-only backtest result file doesn't exist. Please run backtest first. Path: {long_only_backtest_chart_path}")
+
+# 展示多空回测结果 
+st.subheader("Long-short Strategy Backtest Results")
+if os.path.exists(long_short_backtest_chart_path):
+    with open(long_short_backtest_chart_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    st.components.v1.html(html_content, height=1100, width=1600, scrolling=True)
+else:
+    st.error(f"Long-short backtest result file doesn't exist. Please run backtest first. Path: {long_short_backtest_chart_path}")
 
 
 # Add IC Comparison Chart

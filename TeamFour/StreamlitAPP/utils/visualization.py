@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from StreamlitAPP.utils.database import read_data, write_data
 
-def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", data_source=None):
+def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", data_source=None, is_long_short=True):
     """
     使用Plotly绘制回测结果
     
@@ -13,6 +13,7 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
         evaluate: DataFrame, 包含性能评估指标，如果为None则从数据库读取
         title: str, 图表标题
         data_source: str, 数据库表路径，例如'QF5214.visualization.equity_curve'
+        is_long_short: bool, 是否为多空回测，默认为True
         
     Returns:
         plotly.graph_objects.Figure: Plotly图表对象
@@ -40,22 +41,40 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
         "Sharpe": "#BFD8B8"        # 淡绿色
     }
     
-    # 创建子图 - 调整为左右各四个子图
-    fig = make_subplots(
-        rows=4, 
-        cols=2, 
-        specs=[
-            [{"colspan": 1}, {"rowspan": 1, "type": "table"}], 
-            [{"colspan": 1}, {"rowspan": 1, "type": "table"}],
-            [{"colspan": 1}, {"rowspan": 1, "type": "table"}],
-            [{"colspan": 1}, {"rowspan": 1, "type": "table"}]
-        ], 
-        row_heights=[0.37, 0.23, 0.2, 0.2],  # 调整行高比例，为表格提供更多空间
-        column_widths=[0.7, 0.3],  # 增加右侧列宽比例
-        subplot_titles=("Net Value", "Performance Metrics", "Drawdown", "Drawdown Stats", "Rolling Beta (3 months)", "Rolling Beta Stats (3 months)", "Rolling Sharpe (3 months)", "Rolling Sharpe Stats (3 months)"),
-        vertical_spacing=0.08,  # 减小垂直间距以提供更多空间
-        horizontal_spacing=0.05
-    )
+    # 创建子图 - 根据是否为多空回测调整子图数量
+    if is_long_short:
+        # 多空回测：3x2布局
+        fig = make_subplots(
+            rows=3, 
+            cols=2, 
+            specs=[
+                [{"colspan": 1}, {"rowspan": 1, "type": "table"}], 
+                [{"colspan": 1}, {"rowspan": 1, "type": "table"}],
+                [{"colspan": 1}, {"rowspan": 1, "type": "table"}]
+            ], 
+            row_heights=[0.4, 0.3, 0.3],  # 调整行高比例
+            column_widths=[0.7, 0.3],
+            subplot_titles=("Net Value", "Performance Metrics", "Drawdown", "Drawdown Stats", "Rolling Sharpe (3 months)", "Rolling Sharpe Stats (3 months)"),
+            vertical_spacing=0.1,
+            horizontal_spacing=0.05
+        )
+    else:
+        # 单多回测：显示完整分析，4行
+        fig = make_subplots(
+            rows=4, 
+            cols=2, 
+            specs=[
+                [{"colspan": 1}, {"rowspan": 1, "type": "table"}], 
+                [{"colspan": 1}, {"rowspan": 1, "type": "table"}],
+                [{"colspan": 1}, {"rowspan": 1, "type": "table"}],
+                [{"colspan": 1}, {"rowspan": 1, "type": "table"}]
+            ], 
+            row_heights=[0.37, 0.23, 0.2, 0.2],
+            column_widths=[0.7, 0.3],
+            subplot_titles=("Net Value", "Performance Metrics", "Drawdown", "Drawdown Stats", "Rolling Beta (3 months)", "Rolling Beta Stats (3 months)", "Rolling Sharpe (3 months)", "Rolling Sharpe Stats (3 months)"),
+            vertical_spacing=0.08,
+            horizontal_spacing=0.05
+        )
     
     # 绘制净值曲线
     for strategy in equity_curve.columns:
@@ -71,8 +90,8 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
                 row=1, col=1
             )
     
-    # 绘制累积超额收益
-    if 'Excess_Return' in equity_curve.columns:
+    # 如果不是多空回测，绘制累积超额收益
+    if not is_long_short and 'Excess_Return' in equity_curve.columns:
         fig.add_trace(
             go.Scatter(
                 x=equity_curve.index, 
@@ -100,8 +119,8 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
         row=2, col=1
     )
     
-    # 绘制超额收益回撤
-    if 'Excess_Return' in equity_curve.columns:
+    # 如果不是多空回测，绘制超额收益回撤
+    if not is_long_short and 'Excess_Return' in equity_curve.columns:
         excess_series = equity_curve['Excess_Return']
         excess_cummax = excess_series.cummax()
         excess_drawdown = (excess_series / excess_cummax - 1)
@@ -117,8 +136,8 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
             row=2, col=1
         )
     
-    # 绘制滚动Beta
-    if 'Rolling_3M_Beta' in equity_curve.columns:
+    # 如果不是多空回测，绘制滚动Beta
+    if not is_long_short and 'Rolling_3M_Beta' in equity_curve.columns:
         fig.add_trace(
             go.Scatter(
                 x=equity_curve.index, 
@@ -128,7 +147,7 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
             ),
             row=3, col=1
         )
-        # 添加Beta=1的参考线
+        # 添加Beta=1和Beta=0的参考线
         fig.add_trace(
             go.Scatter(
                 x=equity_curve.index, 
@@ -138,9 +157,19 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
             ),
             row=3, col=1
         )
+        fig.add_trace(
+            go.Scatter(
+                x=equity_curve.index, 
+                y=[0] * len(equity_curve), 
+                name='Beta=0', 
+                line=dict(color='lightgrey', dash='dot')
+            ),
+            row=3, col=1
+        )
     
     # 绘制滚动Sharpe
     if 'Rolling_3M_Sharpe' in equity_curve.columns:
+        sharpe_row = 3 if is_long_short else 4  # 在多空回测时使用第3行，单多回测时使用第4行
         fig.add_trace(
             go.Scatter(
                 x=equity_curve.index, 
@@ -148,7 +177,7 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
                 name='Rolling Sharpe (3 months)', 
                 line=dict(color=pastel_colors['Sharpe'])
             ),
-            row=4, col=1
+            row=sharpe_row, col=1
         )
         # 添加Sharpe=0的参考线
         fig.add_trace(
@@ -158,7 +187,7 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
                 name='Sharpe=0', 
                 line=dict(color='lightgrey', dash='dash')
             ),
-            row=4, col=1
+            row=sharpe_row, col=1
         )
     
     # 创建主要指标表格数据
@@ -166,8 +195,8 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
         ["Metrics"] + [col for col in equity_curve.columns if 'rolling' not in col.lower() and col != 'Excess_Return'],
     ]
     
-    # 如果有超额收益数据，添加到表格
-    if 'Excess_Return' in equity_curve.columns and 'Excess_Return' in evaluate.index:
+    # 如果不是多空回测，添加超额收益数据到表格
+    if not is_long_short and 'Excess_Return' in equity_curve.columns and 'Excess_Return' in evaluate.index:
         table_data[0].append('Excess_Return')
     
     # 添加各项指标
@@ -213,9 +242,9 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
     )
     
     # 创建回撤统计表格
-    drawdown_table_data = [["Drawdown Stats", "Strategy", "NASDAQ100"]]
-    if 'Excess_Return' in equity_curve.columns:
-        drawdown_table_data = [["Drawdown Stats", "Strategy", "NASDAQ100", "Excess Return"]]
+    drawdown_table_data = [["Drawdown Stats", "Strategy"]]
+    if not is_long_short:
+        drawdown_table_data[0].extend(["NASDAQ100", "Excess Return"])
     
     # 回撤指标
     drawdown_metrics = [
@@ -241,23 +270,23 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
         else:
             row_data.append('N/A')
             
-        # 添加基准数据
-        if 'NASDAQ100' in evaluate.index and db_metric in evaluate.loc['NASDAQ100']:
-            if db_metric == '最大回撤':
-                row_data.append(f"{evaluate.loc['NASDAQ100', db_metric]:.2%}")
-            elif db_metric == '平均回撤':
-                row_data.append(f"{evaluate.loc['NASDAQ100', db_metric]:.2%}")
-            else:
-                # 修复天数可能是数字或字符串
-                if isinstance(evaluate.loc['NASDAQ100', db_metric], str):
-                    row_data.append(evaluate.loc['NASDAQ100', db_metric])
+        # 如果不是多空回测，添加基准数据
+        if not is_long_short:
+            if 'NASDAQ100' in evaluate.index and db_metric in evaluate.loc['NASDAQ100']:
+                if db_metric == '最大回撤':
+                    row_data.append(f"{evaluate.loc['NASDAQ100', db_metric]:.2%}")
+                elif db_metric == '平均回撤':
+                    row_data.append(f"{evaluate.loc['NASDAQ100', db_metric]:.2%}")
                 else:
-                    row_data.append(f"{evaluate.loc['NASDAQ100', db_metric]:.0f}")
-        else:
-            row_data.append('N/A')
-            
-        # 添加超额收益数据
-        if 'Excess_Return' in equity_curve.columns:
+                    # 修复天数可能是数字或字符串
+                    if isinstance(evaluate.loc['NASDAQ100', db_metric], str):
+                        row_data.append(evaluate.loc['NASDAQ100', db_metric])
+                    else:
+                        row_data.append(f"{evaluate.loc['NASDAQ100', db_metric]:.0f}")
+            else:
+                row_data.append('N/A')
+                
+            # 添加超额收益数据
             if 'Excess_Return' in evaluate.index and db_metric in evaluate.loc['Excess_Return']:
                 if db_metric == '最大回撤':
                     row_data.append(f"{evaluate.loc['Excess_Return', db_metric]:.2%}")
@@ -300,45 +329,46 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
         row=2, col=2
     )
     
-    # 创建滚动Beta统计指标表格
-    beta_table_data = [["Beta Stats (3 months)", "Value"]]
-    
-    rolling_beta_metrics = [
-        ('滚动Beta平均值', 'Mean'),
-        ('滚动Beta标准差', 'Std Dev'),
-        ('滚动Beta中位数', 'Median'), 
-        ('滚动Beta 25%分位', '25% Quantile'),
-        ('滚动Beta 75%分位', '75% Quantile')
-    ]
-    
-    for metric, display_name in rolling_beta_metrics:
-        if 'Strategy' in evaluate.index and metric in evaluate.loc['Strategy']:
-            beta_table_data.append([display_name, f"{evaluate.loc['Strategy', metric]:.3f}"])
-    
-    # 添加Beta统计表格（简约风格）
-    fig.add_trace(
-        go.Table(
-            header=dict(
-                values=beta_table_data[0],
-                fill_color=pastel_colors['Beta'],
-                align=['center', 'center'],
-                font=dict(size=12, family="Arial", color="#2a3f5f"),
-                height=28,
-                line_width=0.5,
-                line_color='white'
+    # 如果不是多空回测，创建滚动Beta统计指标表格
+    if not is_long_short:
+        beta_table_data = [["Beta Stats (3 months)", "Value"]]
+        
+        rolling_beta_metrics = [
+            ('滚动Beta平均值', 'Mean'),
+            ('滚动Beta标准差', 'Std Dev'),
+            ('滚动Beta中位数', 'Median'), 
+            ('滚动Beta 25%分位', '25% Quantile'),
+            ('滚动Beta 75%分位', '75% Quantile')
+        ]
+        
+        for metric, display_name in rolling_beta_metrics:
+            if 'Strategy' in evaluate.index and metric in evaluate.loc['Strategy']:
+                beta_table_data.append([display_name, f"{evaluate.loc['Strategy', metric]:.3f}"])
+        
+        # 添加Beta统计表格（简约风格）
+        fig.add_trace(
+            go.Table(
+                header=dict(
+                    values=beta_table_data[0],
+                    fill_color=pastel_colors['Beta'],
+                    align=['center', 'center'],
+                    font=dict(size=12, family="Arial", color="#2a3f5f"),
+                    height=28,
+                    line_width=0.5,
+                    line_color='white'
+                ),
+                cells=dict(
+                    values=[[row[0] for row in beta_table_data[1:]], [row[1] for row in beta_table_data[1:]]],
+                    fill_color='white',
+                    align=['center', 'center'],
+                    font=dict(size=11, color="#2a3f5f"),
+                    height=22,
+                    line_width=0.5,
+                    line_color=pastel_colors['Beta']
+                )
             ),
-            cells=dict(
-                values=[[row[0] for row in beta_table_data[1:]], [row[1] for row in beta_table_data[1:]]],
-                fill_color='white',
-                align=['center', 'center'],
-                font=dict(size=11, color="#2a3f5f"),
-                height=22,
-                line_width=0.5,
-                line_color=pastel_colors['Beta']
-            )
-        ),
-        row=3, col=2
-    )
+            row=3, col=2
+        )
     
     # 创建滚动Sharpe统计指标表格
     sharpe_table_data = [["Sharpe Stats (3 months)", "Value"]]
@@ -356,6 +386,7 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
             sharpe_table_data.append([display_name, f"{evaluate.loc['Strategy', metric]:.3f}"])
     
     # 添加Sharpe统计表格（简约风格）
+    sharpe_row = 3 if is_long_short else 4  # 在多空回测时使用第3行，单多回测时使用第4行
     fig.add_trace(
         go.Table(
             header=dict(
@@ -377,7 +408,7 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
                 line_color=pastel_colors['Sharpe']
             )
         ),
-        row=4, col=2
+        row=sharpe_row, col=2
     )
     
     # 更新布局（简约风格）
@@ -388,7 +419,7 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
             y=0.98,
             font=dict(size=20, color="#2a3f5f")
         ),
-        height=1300,
+        height=1000 if is_long_short else 1300,  # 多空回测时减少高度
         width=1500,
         showlegend=True,
         legend=dict(
@@ -417,18 +448,27 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
         gridcolor='#E5ECF6', 
         title_font=dict(color="#2a3f5f")
     )
-    fig.update_yaxes(
-        title_text="Beta (3 months)", 
-        row=3, col=1, 
-        gridcolor='#E5ECF6', 
-        title_font=dict(color="#2a3f5f")
-    )
-    fig.update_yaxes(
-        title_text="Sharpe (3 months)", 
-        row=4, col=1, 
-        gridcolor='#E5ECF6', 
-        title_font=dict(color="#2a3f5f")
-    )
+    
+    if not is_long_short:
+        fig.update_yaxes(
+            title_text="Beta (3 months)", 
+            row=3, col=1, 
+            gridcolor='#E5ECF6', 
+            title_font=dict(color="#2a3f5f")
+        )
+        fig.update_yaxes(
+            title_text="Sharpe (3 months)", 
+            row=4, col=1, 
+            gridcolor='#E5ECF6', 
+            title_font=dict(color="#2a3f5f")
+        )
+    else:
+        fig.update_yaxes(
+            title_text="Sharpe (3 months)", 
+            row=3, col=1, 
+            gridcolor='#E5ECF6', 
+            title_font=dict(color="#2a3f5f")
+        )
     
     # 更新所有x轴的网格线颜色为淡色
     fig.update_xaxes(gridcolor='#E5ECF6')
@@ -436,7 +476,7 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
     # 调整子图标题位置
     for i, annotation in enumerate(fig['layout']['annotations']):
         # 调整子图标题的垂直位置，防止与坐标轴重叠
-        if i < 8:  # 所有子图标题
+        if i < (4 if is_long_short else 8):  # 多空回测时只有4个子图标题
             annotation['y'] = annotation['y'] + 0.02
             annotation['font'] = dict(color="#2a3f5f")
     
