@@ -5,7 +5,6 @@ import os
 from tqdm import tqdm
 import sys
 from pathlib import Path
-import re
 import datetime
 import plotly.graph_objects as go
 import plotly.express as px
@@ -15,7 +14,7 @@ from StreamlitAPP.utils.database import read_data, write_data, get_market_data
 from StreamlitAPP.utils.visualization import plot_results, calculate_performance_metrics
 
 
-#%%
+#%% 持仓数据
 try:
     position_df = read_data('QF5214.tradingstrategy.dailytrading')
     #print(position_df.head())
@@ -24,9 +23,8 @@ except Exception as e:
     position_df = None
 position_start_date=position_df['Date'].min()
 position_end_date=position_df['Date'].max()
-#print(position_start_date)
-#%%
-
+print(position_end_date)
+#%% 行情数据
 try:
     price_df = read_data(f'SELECT * FROM datacollection.stock_data WHERE "Date" >= \'{position_start_date}\' AND "Date" <= \'{position_end_date}\'')
     #print(price_df.head())
@@ -34,10 +32,9 @@ except Exception as e:
     print(f"读取股票价格数据出错: {str(e)}")
     price_df = None
 
-#%%
-# 读取指数数据
+#%% 指数数据
 try:
-    index_df = read_data(f'SELECT * FROM datacollection.index_data WHERE "Date" >= \'{position_start_date}\' AND "Date" <= \'{position_end_date}\'')
+    index_df = read_data(f'SELECT * FROM datacollection.index_data WHERE "Date" >= \'{position_start_date}\' AND "Date" <= \'{position_end_date}\' AND "Index" = \'S&P 500\'')
     #print(index_df.head())
     index_df = index_df[['Date', 'Adj_Close']]
 except Exception as e:
@@ -45,10 +42,14 @@ except Exception as e:
     index_df = None
 
 
-
-#%%
-#暂时将position_df的Weight列设置为0.2
-position_df['Weight'] = 0.2
+#%% 完成数据准备
+long_position_df=position_df[position_df['Position_Type']=='Long']
+# 将Short仓位的权重取反
+short_position_df = position_df[position_df['Position_Type']=='Short']
+short_position_df['Weight'] = short_position_df['Weight'] * -1
+position_df = pd.concat([long_position_df, short_position_df])
+position_df.sort_values(by='Date', inplace=True)
+print(position_df.head(15))
 price_df=price_df[['Ticker','Date','Adj_Close']]
 
 # 转换持仓数据的日期
@@ -99,23 +100,21 @@ for i, (df, name) in enumerate(zip(dfs, df_names)):
 # 更新原始DataFrame
 position_df, price_df, index_df = dfs
 
-
-
-
 merged_df = pd.merge(position_df, price_df, on=['Ticker', 'Date'], how='left')
 merged_df = pd.merge(merged_df, index_df, on=['Date'], how='left', suffixes=('', '_S&P500'))
-print(merged_df.head())
+merged_df.dropna(subset=['Weight','Adj_Close','Adj_Close_S&P500'], inplace=True)
+merged_df.sort_values(by='Date', inplace=True)
+merged_df.reset_index(drop=True, inplace=True)
+#print(merged_df.tail(15))
 
 
-#%%
-# 向量化回测核心函数
-def run_backtest(position_df, price_df=None, title="Backtest", save_results=True, data_source='QF5214.visualization.backtest_results'):
+#%% 向量化回测
+def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF5214.visualization.backtest_results'):
     """
     执行向量化回测
     
     Args:
-        position_df: DataFrame, 持仓数据
-        price_df: DataFrame, 价格数据，如果为None则从数据库获取
+        merged_df: DataFrame, 已合并的持仓和价格数据
         title: str, 回测标题
         save_results: bool, 是否保存结果
         data_source: str, 保存结果的数据库表路径，默认为'QF5214.visualization.backtest_results'
@@ -128,106 +127,17 @@ def run_backtest(position_df, price_df=None, title="Backtest", save_results=True
     """
     print("开始向量化回测...")
     
-    # 确保持仓数据不为空
-    if position_df is None or position_df.empty:
-        print("错误: 持仓数据为空")
+    # 确保数据不为空
+    if merged_df is None or merged_df.empty:
+        print("错误: 合并数据为空")
         return None, None, None
     
     # 确保日期列是datetime类型
-    if 'Date' in position_df.columns and position_df['Date'].dtype != 'datetime64[ns]':
-        position_df['Date'] = pd.to_datetime(position_df['Date'])
+    if 'Date' in merged_df.columns and merged_df['Date'].dtype != 'datetime64[ns]':
+        merged_df['Date'] = pd.to_datetime(merged_df['Date'])
     
-    # 获取持仓数据的日期范围
-    position_start_date = position_df['Date'].min()
-    position_end_date = position_df['Date'].max()
-    
-    # 获取持仓中的股票列表
-    if 'Ticker' in position_df.columns:
-        tickers = position_df['Ticker'].unique().tolist()
-    else:
-        print("错误: 持仓数据中缺少'Ticker'列")
-        return None, None, None
-    
-    # 如果未提供价格数据，从数据库获取
-    if price_df is None:
-        try:
-            # 使用新的get_market_data函数获取价格数据
-            price_df = get_market_data(
-                start_date=position_start_date.strftime('%Y-%m-%d'), 
-                end_date=position_end_date.strftime('%Y-%m-%d'),
-                tickers=tickers
-            )
-            
-            if price_df is None or price_df.empty:
-                print("错误: 无法从数据库获取价格数据")
-                return None, None, None
-                
-            # 只保留需要的列
-            price_df = price_df[['Ticker', 'Date', 'Adj_Close']]
-        except Exception as e:
-            print(f"获取价格数据出错: {str(e)}")
-            return None, None, None
-    
-    # 确保价格数据的日期列是datetime类型
-    if 'Date' in price_df.columns and price_df['Date'].dtype != 'datetime64[ns]':
-        price_df['Date'] = pd.to_datetime(price_df['Date'])
-    
-    # 获取指数数据作为基准
-    try:
-        index_df = read_data(f'SELECT * FROM datacollection.index_data WHERE "Date" >= \'{position_start_date}\' AND "Date" <= \'{position_end_date}\'')
-        if index_df is not None and not index_df.empty:
-            index_df = index_df[['Date', 'Adj_Close']]
-            
-            # 确保指数数据的日期列是datetime类型
-            if index_df['Date'].dtype != 'datetime64[ns]':
-                index_df['Date'] = pd.to_datetime(index_df['Date'])
-        else:
-            print("警告: 无法获取指数数据，将创建一个假数据基准")
-            index_df = None
-    except Exception as e:
-        print(f"读取指数数据出错: {str(e)}")
-        index_df = None
-    
-    # 统一日期范围
-    dfs = [position_df, price_df, index_df]
-    df_names = ['position_df', 'price_df', 'index_df']
-    
-    # 初始化最晚的起始时间和最早的终止时间
-    latest_start_date = None
-    earliest_end_date = None
-    
-    # 扫描所有DataFrame的时间范围
-    for df, name in zip(dfs, df_names):
-        if df is not None and not df.empty:
-            start_date = df['Date'].min()
-            end_date = df['Date'].max()
-            
-            print(f"{name} 时间范围: {start_date} 到 {end_date}")
-            
-            # 更新最晚的起始时间
-            if latest_start_date is None or start_date > latest_start_date:
-                latest_start_date = start_date
-                
-            # 更新最早的终止时间
-            if earliest_end_date is None or end_date < earliest_end_date:
-                earliest_end_date = end_date
-    
-    print(f"统一时间范围: {latest_start_date} 到 {earliest_end_date}")
-    
-    # 将三个DataFrame的时间范围统一
-    for i, (df, name) in enumerate(zip(dfs, df_names)):
-        if df is not None and not df.empty:
-            filtered_df = df[(df['Date'] >= latest_start_date) & (df['Date'] <= earliest_end_date)]
-            dfs[i] = filtered_df
-            print(f"{name} 过滤后行数: {len(filtered_df)}")
-    
-    # 更新原始DataFrame
-    position_df, price_df, index_df = dfs
-    
-    # 合并持仓数据和价格数据用于计算指数比较
-    merged_df = pd.merge(position_df, price_df, on=['Ticker', 'Date'], how='left')
-    if index_df is not None:
-        merged_df = pd.merge(merged_df, index_df, on=['Date'], how='left', suffixes=('', '_S&P500'))
+    # 从合并数据中提取所需信息
+    position_df = merged_df[['Date', 'Ticker', 'Weight', 'Position_Type']].copy()
     
     # 获取所有交易日期
     all_dates = sorted(position_df['Date'].unique())
@@ -244,29 +154,24 @@ def run_backtest(position_df, price_df=None, title="Backtest", save_results=True
         # 获取前一天的持仓
         prev_positions = position_df[position_df['Date'] == prev_date]
         
-        # 获取当天和前一天的价格数据
-        current_prices = price_df[price_df['Date'] == current_date]
-        prev_prices = price_df[price_df['Date'] == prev_date]
+        # 获取当天和前一天的合并数据
+        current_data = merged_df[merged_df['Date'] == current_date]
+        prev_data = merged_df[merged_df['Date'] == prev_date]
         
         # 获取当天和前一天的指数数据
-        if index_df is not None:
-            current_index = merged_df[merged_df['Date'] == current_date]['Adj_Close_S&P500'].iloc[0] if not merged_df[merged_df['Date'] == current_date].empty else None
-            prev_index = merged_df[merged_df['Date'] == prev_date]['Adj_Close_S&P500'].iloc[0] if not merged_df[merged_df['Date'] == prev_date].empty else None
-            
-            # 计算基准指数收益率
-            if current_index is not None and prev_index is not None and prev_index > 0:
-                index_return = current_index / prev_index - 1
-                equity_curve.loc[current_date, 'S&P500'] = equity_curve.loc[prev_date, 'S&P500'] * (1 + index_return)
-            else:
-                # 如果缺少数据，净值保持不变
-                equity_curve.loc[current_date, 'S&P500'] = equity_curve.loc[prev_date, 'S&P500']
+        current_index = current_data['Adj_Close_S&P500'].iloc[0] if not current_data.empty else None
+        prev_index = prev_data['Adj_Close_S&P500'].iloc[0] if not prev_data.empty else None
+        
+        # 计算基准指数收益率
+        if current_index is not None and prev_index is not None and prev_index > 0:
+            index_return = current_index / prev_index - 1
+            equity_curve.loc[current_date, 'S&P500'] = equity_curve.loc[prev_date, 'S&P500'] * (1 + index_return)
         else:
-            # 如果没有指数数据，给S&P500设置一个微小的随机收益率
-            random_return = np.random.normal(0.0003, 0.005)  # 均值为0.03%，标准差为0.5%
-            equity_curve.loc[current_date, 'S&P500'] = equity_curve.loc[prev_date, 'S&P500'] * (1 + random_return)
+            # 如果缺少数据，净值保持不变
+            equity_curve.loc[current_date, 'S&P500'] = equity_curve.loc[prev_date, 'S&P500']
         
         # 检查是否有足够的数据
-        if prev_positions.empty or current_prices.empty or prev_prices.empty:
+        if prev_positions.empty or current_data.empty or prev_data.empty:
             print(f"警告: {prev_date}或{current_date}缺少必要数据，跳过该日计算")
             # 如果缺少数据，净值保持不变
             equity_curve.loc[current_date, 'Strategy'] = equity_curve.loc[prev_date, 'Strategy']
@@ -275,24 +180,24 @@ def run_backtest(position_df, price_df=None, title="Backtest", save_results=True
             continue
         
         # 合并持仓和价格数据
-        merged_data = pd.merge(
+        merged_positions = pd.merge(
             prev_positions[['Ticker', 'Weight']],  # 取前一天的持仓
-            current_prices[['Ticker', 'Adj_Close']],  # 当天的收盘价
+            current_data[['Ticker', 'Adj_Close']],  # 当天的收盘价
             on='Ticker',
             how='inner'  # 内连接，只保留同时存在于两个表中的股票
         )
         
         # 再合并前一天的价格
-        merged_data = pd.merge(
-            merged_data,
-            prev_prices[['Ticker', 'Adj_Close']],  # 前一天的收盘价
+        merged_positions = pd.merge(
+            merged_positions,
+            prev_data[['Ticker', 'Adj_Close']],  # 前一天的收盘价
             on='Ticker',
             how='inner',
             suffixes=('', '_prev')  # 区分当天和前一天的价格
         )
         
         # 检查合并后是否有数据
-        if merged_data.empty:
+        if merged_positions.empty:
             print(f"警告: {current_date}没有可用的股票数据，跳过该日计算")
             equity_curve.loc[current_date, 'Strategy'] = equity_curve.loc[prev_date, 'Strategy']
             # 超额收益也保持不变
@@ -300,13 +205,13 @@ def run_backtest(position_df, price_df=None, title="Backtest", save_results=True
             continue
         
         # 计算每支股票的收益率
-        merged_data['Return'] = merged_data['Adj_Close'] / merged_data['Adj_Close_prev'] - 1
+        merged_positions['Return'] = merged_positions['Adj_Close'] / merged_positions['Adj_Close_prev'] - 1
         
         # 计算加权收益率
-        merged_data['Weighted_Return'] = merged_data['Weight'] * merged_data['Return']
+        merged_positions['Weighted_Return'] = merged_positions['Weight'] * merged_positions['Return']
         
         # 计算当天的总收益率
-        day_return = merged_data['Weighted_Return'].sum()
+        day_return = merged_positions['Weighted_Return'].sum()
         
         # 更新净值曲线
         equity_curve.loc[current_date, 'Strategy'] = equity_curve.loc[prev_date, 'Strategy'] * (1 + day_return)
@@ -314,6 +219,7 @@ def run_backtest(position_df, price_df=None, title="Backtest", save_results=True
         # 计算当天的超额收益率
         strategy_return = equity_curve.loc[current_date, 'Strategy'] / equity_curve.loc[prev_date, 'Strategy'] - 1
         benchmark_return = equity_curve.loc[current_date, 'S&P500'] / equity_curve.loc[prev_date, 'S&P500'] - 1
+        #print('日期',current_date,'策略收益率',strategy_return,'基准收益率',benchmark_return)
         excess_return = strategy_return - benchmark_return
         
         # 更新累积超额收益
@@ -385,50 +291,29 @@ def run_backtest(position_df, price_df=None, title="Backtest", save_results=True
     
     return evaluate, equity_curve, fig
 
-
-
 #%%
+# 执行回测
+print("开始执行回测...")
+evaluate, equity_curve, fig = run_backtest(merged_df, title="Backtest")
 
-# 执行回测，添加S&P500指数作为基准
-# evaluate, equity_curve, fig = run_backtest(position_df, price_df=None, title="Backtest")
+# 打印结果
+if evaluate is not None:
+    print("\n======== 回测结果 ========")
+    print("评估指标:")
+    print(evaluate)
+    print("回测完成，结果已保存。")
 
-# # 注释掉显示图表的代码，避免在运行脚本时弹出图表
-# # if fig is not None:
-# #     fig.show()
-
-# # 打印评估指标
-# print("\n======== 回测结果 ========")
-# print("评估指标:")
-# print(evaluate)
-    
 #%%
 
 # 添加一个main函数，方便脚本单独运行
 def main():
     try:
-        # 读取持仓数据
-        position_df = read_data('QF5214.tradingstrategy.dailytrading')
-        if position_df is None or position_df.empty:
-            print("错误: 无法读取持仓数据或持仓数据为空")
-            return
-            
-        position_start_date = position_df['Date'].min()
-        position_end_date = position_df['Date'].max()
-        
-        # 读取股票价格数据
-        price_df = read_data(f'SELECT * FROM datacollection.stock_data WHERE "Date" >= \'{position_start_date}\' AND "Date" <= \'{position_end_date}\'')
-        if price_df is None or price_df.empty:
-            print("错误: 无法读取股票价格数据或价格数据为空")
-            return
-            
-        price_df = price_df[['Ticker', 'Date', 'Adj_Close']]
-        
-        # 设置权重（示例中固定为0.2）
-        position_df['Weight'] = 0.2
+        # 使用已经在文件开头准备好的merged_df直接进行回测
+        global merged_df
         
         # 执行回测
         print("开始执行回测...")
-        evaluate, equity_curve, fig = run_backtest(position_df, price_df=price_df, title="Backtest")
+        evaluate, equity_curve, fig = run_backtest(merged_df, title="Backtest")
         
         # 打印结果
         if evaluate is not None:
@@ -442,8 +327,10 @@ def main():
     except Exception as e:
         print(f"回测过程中发生错误: {str(e)}")
 
+#%%
+
 # 当脚本直接运行时执行main函数
 if __name__ == "__main__":
-    main()
+    main() 
 
-
+#%%

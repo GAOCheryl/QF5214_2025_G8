@@ -233,7 +233,11 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
             elif db_metric == '平均回撤':
                 row_data.append(f"{evaluate.loc['Strategy', db_metric]:.2%}")
             else:
-                row_data.append(f"{evaluate.loc['Strategy', db_metric]:.0f}")
+                # 修复天数可能是数字或字符串
+                if isinstance(evaluate.loc['Strategy', db_metric], str):
+                    row_data.append(evaluate.loc['Strategy', db_metric])
+                else:
+                    row_data.append(f"{evaluate.loc['Strategy', db_metric]:.0f}")
         else:
             row_data.append('N/A')
             
@@ -244,7 +248,11 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
             elif db_metric == '平均回撤':
                 row_data.append(f"{evaluate.loc['S&P500', db_metric]:.2%}")
             else:
-                row_data.append(f"{evaluate.loc['S&P500', db_metric]:.0f}")
+                # 修复天数可能是数字或字符串
+                if isinstance(evaluate.loc['S&P500', db_metric], str):
+                    row_data.append(evaluate.loc['S&P500', db_metric])
+                else:
+                    row_data.append(f"{evaluate.loc['S&P500', db_metric]:.0f}")
         else:
             row_data.append('N/A')
             
@@ -256,7 +264,11 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
                 elif db_metric == '平均回撤':
                     row_data.append(f"{evaluate.loc['Excess_Return', db_metric]:.2%}")
                 else:
-                    row_data.append(f"{evaluate.loc['Excess_Return', db_metric]:.0f}")
+                    # 修复天数可能是数字或字符串
+                    if isinstance(evaluate.loc['Excess_Return', db_metric], str):
+                        row_data.append(evaluate.loc['Excess_Return', db_metric])
+                    else:
+                        row_data.append(f"{evaluate.loc['Excess_Return', db_metric]:.0f}")
             else:
                 row_data.append('N/A')
         
@@ -377,7 +389,7 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
             font=dict(size=20, color="#2a3f5f")
         ),
         height=1300,
-        width=1300,
+        width=1500,
         showlegend=True,
         legend=dict(
             orientation="h",
@@ -489,11 +501,13 @@ def calculate_performance_metrics(equity_curve):
                     break
             
             # 计算修复天数
-            recovery_days = 0
             if recovery_date is not None:
                 recovery_days = len(drawdown.loc[max_dd_end_idx:recovery_date])
+            else:
+                recovery_days = "Not Recovered"
         else:
-            recovery_days = 0  # 尚未修复
+            # 如果最大回撤发生在最后一个点，那么肯定没有恢复
+            recovery_days = "Not Recovered"
         
         # 计算卡尔玛比率
         calmar = annual_return / abs(max_drawdown) if max_drawdown < 0 else float('inf')
