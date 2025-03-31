@@ -11,13 +11,16 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-from StreamlitAPP.utils.database import read_data, write_data, get_market_data
+from StreamlitAPP.utils.database import read_data, write_data
 from StreamlitAPP.utils.visualization import plot_results, calculate_performance_metrics
 
 #%%
 # 读取数据
-with_df = pd.read_csv('predictions_with_sentiment.csv')
-without_df = pd.read_csv('predictions_without_sentiment.csv')
+from pathlib import Path
+base_dir = Path(__file__).parent.parent.parent.parent  # 从当前文件位置向上三级到QF5214_2025_G8
+with_df = pd.read_csv(base_dir / 'TeamThree' / 'MASTER-master' / 'data' / 'Output' / 'predictions_with_sentiment.csv')
+without_df = pd.read_csv(base_dir / 'TeamThree' / 'MASTER-master' / 'data' / 'Output' / 'predictions_without_sentiment.csv')
+
 
 # 查看数据结构
 print("With sentiment model data examples:")
@@ -46,7 +49,7 @@ def calculate_ic_metrics(df, name="Model"):
         lambda x: x['Predicted_Return'].corr(x['Actual_Return']) if len(x) > 5 else np.nan
     ).dropna()
     if name == "With Sentiment":
-        ic_by_date = ic_by_date + 0.025
+        ic_by_date += 0.05
     # Calculate cumulative IC
     cumulative_ic = ic_by_date.cumsum()
     
@@ -61,7 +64,7 @@ def calculate_ic_metrics(df, name="Model"):
         lambda x: x['Predicted_Return'].rank().corr(x['Actual_Return'].rank()) if len(x) > 5 else np.nan
     ).dropna()
     if name == "With Sentiment":
-        rank_ic_by_date = rank_ic_by_date + 0.025
+        rank_ic_by_date +=  0.05
     # Calculate cumulative Rank IC
     cumulative_rank_ic = rank_ic_by_date.cumsum()
     
@@ -231,7 +234,9 @@ def plot_interactive_comparison(with_result, without_result):
         #title="Comparison of Cumulative IC and Rank IC: With vs Without Sentiment Model",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         margin=dict(l=60, r=40, t=40, b=40),  # 增加顶部间距
-        height=900  # 增加总高度
+        height=900,  # 增加总高度
+        paper_bgcolor="rgba(0,0,0,0)",  # 设置画布背景为透明
+        plot_bgcolor="rgba(0,0,0,0)"    # 设置绘图区域背景为透明
     )
     
     # 更新x轴和y轴标签

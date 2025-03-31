@@ -93,6 +93,6 @@ if os.path.exists(ic_comparison_path):
         ic_html_content = f.read()
     
     # Display IC comparison chart
-    st.components.v1.html(ic_html_content, height=1200, width=1200, scrolling=True)
+    st.components.v1.html(ic_html_content, height=1200, width=1050, scrolling=True)
 else:
     st.warning(f"IC comparison chart file does not exist. Path: {ic_comparison_path}")
