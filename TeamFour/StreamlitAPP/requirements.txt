@@ -1,4 +1,6 @@
 streamlit-autorefresh
+plotly
 pandas
 numpy
-plotly==5.22.0
+pytz
+sqlalchemy
