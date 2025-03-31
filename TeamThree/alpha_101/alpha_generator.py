@@ -173,7 +173,14 @@ def get_alpha101_table_from_db(to_csv = False):
 def get_updated_sentiment_table_from_db():
     db = database_utils()
     db.connect()
-    # Fetch the input stock_data table.
+    
+    query_input = f'''SELECT * FROM nlp.sentiment_aggregated_live'''
+    db.execute_query(query_input)
+    df_sentiment_live = pd.DataFrame(db.fetch_results(), 
+                      columns=["Ticker", "Date", "Positive", "Negative", "Neutral", "Surprise", "Joy", "Anger", 
+                               "Fear", "Sadness", "Disgust", "Intent Sentiment"])
+    df_sentiment_live["Date"] = (pd.to_datetime(df_sentiment_live["Date"]) .dt.strftime("%Y-%m-%d"))
+
     query_input = f'''SELECT * FROM nlp.sentiment_aggregated_newdate'''
     db.execute_query(query_input)
     df_sentiment = pd.DataFrame(db.fetch_results(), 
@@ -183,7 +190,7 @@ def get_updated_sentiment_table_from_db():
 
     db.close_connection()
 
-    return df_sentiment
+    return df_sentiment_live, df_sentiment
 
 
 def get_sentiment_table_from_db():
