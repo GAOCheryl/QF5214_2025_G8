@@ -4,3 +4,4 @@ pandas
 numpy
 pytz
 sqlalchemy
+psycopg2-binary
