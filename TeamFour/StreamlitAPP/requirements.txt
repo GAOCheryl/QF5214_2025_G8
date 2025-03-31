@@ -1,3 +1,4 @@
 streamlit-autorefresh
 pandas
 numpy
+plotly==5.22.0
