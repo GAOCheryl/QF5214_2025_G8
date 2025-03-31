@@ -213,9 +213,9 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
     )
     
     # 创建回撤统计表格
-    drawdown_table_data = [["Drawdown Stats", "Strategy", "S&P500"]]
+    drawdown_table_data = [["Drawdown Stats", "Strategy", "NASDAQ100"]]
     if 'Excess_Return' in equity_curve.columns:
-        drawdown_table_data = [["Drawdown Stats", "Strategy", "S&P500", "Excess Return"]]
+        drawdown_table_data = [["Drawdown Stats", "Strategy", "NASDAQ100", "Excess Return"]]
     
     # 回撤指标
     drawdown_metrics = [
@@ -242,17 +242,17 @@ def plot_results(equity_curve=None, evaluate=None, title="Backtest Results", dat
             row_data.append('N/A')
             
         # 添加基准数据
-        if 'S&P500' in evaluate.index and db_metric in evaluate.loc['S&P500']:
+        if 'NASDAQ100' in evaluate.index and db_metric in evaluate.loc['NASDAQ100']:
             if db_metric == '最大回撤':
-                row_data.append(f"{evaluate.loc['S&P500', db_metric]:.2%}")
+                row_data.append(f"{evaluate.loc['NASDAQ100', db_metric]:.2%}")
             elif db_metric == '平均回撤':
-                row_data.append(f"{evaluate.loc['S&P500', db_metric]:.2%}")
+                row_data.append(f"{evaluate.loc['NASDAQ100', db_metric]:.2%}")
             else:
                 # 修复天数可能是数字或字符串
-                if isinstance(evaluate.loc['S&P500', db_metric], str):
-                    row_data.append(evaluate.loc['S&P500', db_metric])
+                if isinstance(evaluate.loc['NASDAQ100', db_metric], str):
+                    row_data.append(evaluate.loc['NASDAQ100', db_metric])
                 else:
-                    row_data.append(f"{evaluate.loc['S&P500', db_metric]:.0f}")
+                    row_data.append(f"{evaluate.loc['NASDAQ100', db_metric]:.0f}")
         else:
             row_data.append('N/A')
             

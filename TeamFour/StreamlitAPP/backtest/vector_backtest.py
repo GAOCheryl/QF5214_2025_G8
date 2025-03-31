@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-from StreamlitAPP.utils.database import read_data, write_data, get_market_data
+from StreamlitAPP.utils.database import read_data, write_data
 from StreamlitAPP.utils.visualization import plot_results, calculate_performance_metrics
 
 
@@ -34,7 +34,7 @@ except Exception as e:
 
 #%% 指数数据
 try:
-    index_df = read_data(f'SELECT * FROM datacollection.index_data WHERE "Date" >= \'{position_start_date}\' AND "Date" <= \'{position_end_date}\' AND "Index" = \'S&P 500\'')
+    index_df = read_data(f'SELECT * FROM datacollection.index_data WHERE "Date" >= \'{position_start_date}\' AND "Date" <= \'{position_end_date}\' AND "Index" = \'NASDAQ 100\'')
     #print(index_df.head())
     index_df = index_df[['Date', 'Adj_Close']]
 except Exception as e:
@@ -101,8 +101,8 @@ for i, (df, name) in enumerate(zip(dfs, df_names)):
 position_df, price_df, index_df = dfs
 
 merged_df = pd.merge(position_df, price_df, on=['Ticker', 'Date'], how='left')
-merged_df = pd.merge(merged_df, index_df, on=['Date'], how='left', suffixes=('', '_S&P500'))
-merged_df.dropna(subset=['Weight','Adj_Close','Adj_Close_S&P500'], inplace=True)
+merged_df = pd.merge(merged_df, index_df, on=['Date'], how='left', suffixes=('', '_NASDAQ100'))
+merged_df.dropna(subset=['Weight','Adj_Close','Adj_Close_NASDAQ100'], inplace=True)
 merged_df.sort_values(by='Date', inplace=True)
 merged_df.reset_index(drop=True, inplace=True)
 #print(merged_df.tail(15))
@@ -143,7 +143,7 @@ def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF
     all_dates = sorted(position_df['Date'].unique())
     
     # 初始化净值曲线，添加基准指数
-    equity_curve = pd.DataFrame(index=all_dates, columns=['Strategy', 'S&P500', 'Excess_Return'])
+    equity_curve = pd.DataFrame(index=all_dates, columns=['Strategy', 'NASDAQ100', 'Excess_Return'])
     equity_curve.fillna(1.0, inplace=True)
     
     # 按日期遍历计算收益
@@ -159,16 +159,16 @@ def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF
         prev_data = merged_df[merged_df['Date'] == prev_date]
         
         # 获取当天和前一天的指数数据
-        current_index = current_data['Adj_Close_S&P500'].iloc[0] if not current_data.empty else None
-        prev_index = prev_data['Adj_Close_S&P500'].iloc[0] if not prev_data.empty else None
+        current_index = current_data['Adj_Close_NASDAQ100'].iloc[0] if not current_data.empty else None
+        prev_index = prev_data['Adj_Close_NASDAQ100'].iloc[0] if not prev_data.empty else None
         
         # 计算基准指数收益率
         if current_index is not None and prev_index is not None and prev_index > 0:
             index_return = current_index / prev_index - 1
-            equity_curve.loc[current_date, 'S&P500'] = equity_curve.loc[prev_date, 'S&P500'] * (1 + index_return)
+            equity_curve.loc[current_date, 'NASDAQ100'] = equity_curve.loc[prev_date, 'NASDAQ100'] * (1 + index_return)
         else:
             # 如果缺少数据，净值保持不变
-            equity_curve.loc[current_date, 'S&P500'] = equity_curve.loc[prev_date, 'S&P500']
+            equity_curve.loc[current_date, 'NASDAQ100'] = equity_curve.loc[prev_date, 'NASDAQ100']
         
         # 检查是否有足够的数据
         if prev_positions.empty or current_data.empty or prev_data.empty:
@@ -218,7 +218,7 @@ def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF
         
         # 计算当天的超额收益率
         strategy_return = equity_curve.loc[current_date, 'Strategy'] / equity_curve.loc[prev_date, 'Strategy'] - 1
-        benchmark_return = equity_curve.loc[current_date, 'S&P500'] / equity_curve.loc[prev_date, 'S&P500'] - 1
+        benchmark_return = equity_curve.loc[current_date, 'NASDAQ100'] / equity_curve.loc[prev_date, 'NASDAQ100'] - 1
         #print('日期',current_date,'策略收益率',strategy_return,'基准收益率',benchmark_return)
         excess_return = strategy_return - benchmark_return
         
@@ -240,10 +240,10 @@ def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF
         equity_curve['Rolling_3M_Sharpe'] = rolling_mean / rolling_std
         
         # 计算滚动3个月Beta
-        if 'S&P500' in daily_returns.columns:
+        if 'NASDAQ100' in daily_returns.columns:
             # 使用协方差计算beta
-            rolling_cov = daily_returns['Strategy'].rolling(window=rolling_window).cov(daily_returns['S&P500'])
-            rolling_var = daily_returns['S&P500'].rolling(window=rolling_window).var()
+            rolling_cov = daily_returns['Strategy'].rolling(window=rolling_window).cov(daily_returns['NASDAQ100'])
+            rolling_var = daily_returns['NASDAQ100'].rolling(window=rolling_window).var()
             equity_curve['Rolling_3M_Beta'] = rolling_cov / rolling_var
     
     # 计算评估指标
