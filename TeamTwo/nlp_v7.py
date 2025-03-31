@@ -502,7 +502,6 @@ from pathlib import Path
 
 analyzer = SentimentEmotionAnalyzer()
 
-# PostgreSQL connection settings
 db_user = "postgres"
 db_password = "qf5214"
 db_host = "134.122.167.14"
