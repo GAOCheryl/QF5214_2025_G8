@@ -1,25 +1,28 @@
 import pandas as pd
 from sqlalchemy import create_engine
 
-db_user = "postgres"
-db_password = "qf5214"
-db_host = "134.122.167.14"
-db_port = 5555
-db_name = "QF5214"
+user = "postgres"
+pw = "qf5214"
+host = "134.122.167.14"
+port = 5555
+dbname = "QF5214"
 
-engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
+db = create_engine(f"postgresql://{user}:{pw}@{host}:{port}/{dbname}")
 
-query = """
+sql = """
     SELECT company, "Date", 
            CAST("Positive" AS FLOAT), CAST("Negative" AS FLOAT), CAST("Neutral" AS FLOAT), 
            CAST("Surprise" AS FLOAT), CAST("Joy" AS FLOAT), CAST("Anger" AS FLOAT), 
            CAST("Fear" AS FLOAT), CAST("Sadness" AS FLOAT), CAST("Disgust" AS FLOAT), 
-           "Intent Sentiment"
+           "Intent Sentiment",
+           CAST("Emotion Confidence" AS FLOAT) AS "Emotion Confidence"
     FROM nlp.sentiment_raw_data
 """
-df = pd.read_sql(query, engine)
 
-aggregated_df = df.groupby(["company", "Date"]).agg({
+df = pd.read_sql(sql, db)
+df = df[df["Emotion Confidence"] >= 0.4]
+
+dailystats = df.groupby(["company", "Date"]).agg({
     "Positive": "mean",
     "Negative": "mean",
     "Neutral": "mean",
@@ -32,9 +35,9 @@ aggregated_df = df.groupby(["company", "Date"]).agg({
     "Intent Sentiment": lambda x: x.value_counts().idxmax()
 }).reset_index()
 
-aggregated_df.to_sql(
-    name="sentiment_aggregated_data",
-    con=engine,
+dailystats.to_sql(
+    name="sentiment_aggregated_data_filter",
+    con=db,
     if_exists="append",
     index=False,
     schema="nlp"
