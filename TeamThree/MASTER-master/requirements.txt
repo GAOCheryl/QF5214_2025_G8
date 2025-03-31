@@ -1,5 +1,15 @@
-numpy>=1.21.0
-pandas>=1.3.0
-matplotlib>=3.4.0
-optuna>=2.10.0
-qlib>=0.7.0
+pandas
+numpy
+qlib==0.0.2.dev20
+pickle5
+optuna
+pandas_market_calendars
+sqlalchemy
+psycopg2-binary
+# Remove bisect as it's a built-in module
+datetime
+# Make sure to add any other dependencies your script needs:
+tensorflow
+torch
+matplotlib
+scikit-learn
