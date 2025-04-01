@@ -11,6 +11,10 @@ from StreamlitAPP.utils.database import read_data, write_data
 from StreamlitAPP.utils.visualization import plot_results, calculate_performance_metrics
 
 
+
+#%%
+
+
 #%% 持仓数据
 try:
     position_df = read_data('QF5214.tradingstrategy.dailytrading')
@@ -297,7 +301,17 @@ def run_backtest(merged_df, title="Backtest", save_results=True, data_source='QF
         result_dir = 'backtest_results'
         if not os.path.exists(result_dir):
             os.makedirs(result_dir)
-        fig.write_html(os.path.join(result_dir, f"{prefix}_backtest_chart.html"))
+        
+        # 保存HTML前先检查文件是否存在，存在则删除
+        html_file_path = os.path.join(result_dir, f"{prefix}_backtest_chart.html")
+        if os.path.exists(html_file_path):
+            try:
+                os.remove(html_file_path)
+                print(f"已删除现有文件: {html_file_path}")
+            except Exception as e:
+                print(f"删除文件失败: {str(e)}")
+        
+        fig.write_html(html_file_path) 
     
     return evaluate, equity_curve, fig
 
