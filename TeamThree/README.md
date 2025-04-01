@@ -78,6 +78,7 @@ datetime
 ## 2. Data Processing
 Below are the base python files for Data Processing.
 -   [database_utils.py](#database_utilspy)
+-   [alpha_generator.py](#alpha_generatorpy)
 
 ###  database_utils
 database_utils.py provides a simple and reusable class, DatabaseUtils, for handling PostgreSQL database connections and queries in Python. It includes methods for connecting to the database, executing queries, fetching results, and closing connections.
@@ -109,6 +110,47 @@ database_utils.py provides a simple and reusable class, DatabaseUtils, for handl
 - fetch_results(): Fetch query results easily
 - close_connection(): Ensure proper connection closure
 - Handle errors and rollbacks gracefully
+
+###  alpha_generator
+alpha_generator.py provides functionality to generate WorldQuant Alpha101 factors, process stock data, index data, and sentiment data for quantitative trading models. It includes methods for data preprocessing, running alpha calculations by ticker, and retrieving data from PostgreSQL databases.
+
+- `data_preprocessing(df)`: Prepares stock data for alpha calculation
+
+| Parameter Name | Description | Type | Default Value |
+|---------------|-------------|-----------------|---------------|
+| df | DataFrame containing stock price and volume data | pandas.DataFrame | Flase |
+
+- `run_by_ticker(df, tickers, alpha_indices)`: Calculates alpha factors for each ticker
+
+| Parameter Name | Description | Type | Default Value |
+|---------------|-------------|-----------------|---------------|
+| df | Preprocessed DataFrame | pandas.DataFrame | Flase |
+| tickers | List of stock tickers to process | list | Flase |
+| alpha_indices | List of alpha factor indices to calculate | list | Flase |
+
+- `generate_alphas(input_schema, input_table_name, save, output_schema, output_table_name, if_return)`: generate_alphas(input_schema, input_table_name, save, output_schema, output_table_name, if_return)
+
+| Parameter Name | Description | Type | Default Value |
+|---------------|-------------|-----------------|---------------|
+| input_schema | Database schema for input data | str | 'datacollection' |
+| input_table_name | Whether to save results to database | str | 'stock_data' |
+| save | Whether to save results to database | bool | Flase |
+| output_schema | Schema for output data | str | 'datacollection' |
+| output_table_name | Table for storing alpha factors | str | 'alpha101' |
+| if_return | Whether to return DataFrames | bool | Flase |
+
+- `get_alpha101_table_from_db(to_csv)`: Retrieves alpha factors, stock data, and index data
+
+| Parameter Name | Description | Type | Default Value |
+|---------------|-------------|-----------------|---------------|
+| to_csv | Whether to save data to CSV files | bool | Flase |
+
+- `get_updated_sentiment_table_from_db()`: Retrieves latest sentiment data
+Returns two DataFrames: live sentiment data and new sentiment data
+
+- `get_sentiment_table_from_db()`: Retrieves historical sentiment data
+Returns two DataFrames: complete sentiment history and filtered sentiment data
+
 
 ## 3. Model Description
 Provide a brief introduction to the model, including its purpose, core methodology, and any relevant theoretical background.
