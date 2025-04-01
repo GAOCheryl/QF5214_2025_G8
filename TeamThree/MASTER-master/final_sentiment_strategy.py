@@ -295,10 +295,10 @@ dl_pred = convert_data_qlibformat(df_pred)
 
 
 # Save the merged DataFrame tinpuo a pickle file
-with open("data/input/updated_pred_input.pkl", "wb") as f:
+with open("data/Input/updated_pred_input.pkl", "wb") as f:
     pickle.dump(dl_pred, f)
 
-with open(f'data/input/updated_pred_input.pkl', 'rb') as f:
+with open(f'data/Input/updated_pred_input.pkl', 'rb') as f:
     dl_pred = pickle.load(f)
 
 # =============================================================================
