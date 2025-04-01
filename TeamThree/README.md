@@ -8,34 +8,72 @@ Provide details on how to set up the Docker environment for running the model.
 ### 1.1 Dockerfile
 ```dockerfile
 # Use official Python image as a base
-FROM python:3.9
+FROM python:3.9-slim
 
-# Set working directory
 WORKDIR /app
+
+# Install system dependencies including gcc
+RUN apt-get update && apt-get -y install cron gcc python3-dev
 
 # Copy requirements and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
-COPY . .
+# Copy your Python script
+COPY final_sentiment_strategy.py .
 
-# Define the entry point
-CMD ["python", "main.py"]
+# Create crontab file
+RUN echo "0 13 * * * cd /app && python /app/final_sentiment_strategy.py >> /var/log/cron.log 2>&1" > /etc/cron.d/script-cron
+RUN chmod 0644 /etc/cron.d/script-cron
+
+# Apply cron job
+RUN crontab /etc/cron.d/script-cron
+
+# Create log file
+RUN touch /var/log/cron.log
+
+# Run cron in foreground
+CMD ["cron", "-f"]
 ```
 
 ### 1.2 Running the Docker Container
 ```sh
-docker build -t model-container .
-docker run -d --name model-instance model-container
+# Build the Docker image
+docker build -t sentiment-strategy .
+
+# Run the container in detached mode
+docker run -d --name sentiment-daily sentiment-strategy
+
+# Check container logs to verify it's running correctly
+docker logs sentiment-daily
+
+# To stop and remove the container if needed
+# docker stop sentiment-daily
+# docker rm sentiment-daily
 ```
 
 ### 1.3 Requirement List
 List all necessary dependencies for running the model.
+```
+pandas
+numpy
+qlib==0.0.2.dev20
+tensorflow
+torch
+matplotlib
+scikit-learn
+optuna
+pandas_market_calendars
+sqlalchemy
+psycopg2-binary
+datetime
+```
 
 #### 1.3.2 System Requirements
-- OS: Linux/macOS/Windows
+- OS: Linux/macOS/Windows with Docker installed
 - Python: 3.9+
+- Disk Space: At least 2GB for Docker image and dependencies
+- Memory: At least 4GB RAM recommended for model operations
 
 ## 2. Data Processing
 Below are the base python files for Data Processing.
