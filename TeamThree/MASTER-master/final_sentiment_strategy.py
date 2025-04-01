@@ -16,8 +16,8 @@ from sqlalchemy import create_engine
 
 
 # Add the parent directory to sys.path so that modules from one level up can be imported.
-parent_dir = os.path.abspath(os.path.join(os.getcwd(), ".."))
-sys.path.append(parent_dir)
+#parent_dir = os.path.abspath(os.path.join(os.getcwd(), ".."))
+#sys.path.append(parent_dir)
 
 
 # Import functions for alpha generation and sentiment extraction
