@@ -55,15 +55,6 @@ try:
     sentiment_date_obj = latest_trading_date - timedelta(days=1)
     sentiment_date_str = sentiment_date_obj.strftime('%Y/%m/%d')
 
-    st.markdown(
-        f"""
-        <div style="text-align: center; color: #999; font-size: 16px; margin-top: -10px;">
-            ⚠️ <i>Testing Phase – trading data from <b>{latest_trading_date}</b>, sentiment from <b>{sentiment_date_str}</b></i>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
     ticker_query = f"""
         SELECT DISTINCT "Ticker", "Position_Type"
         FROM tradingstrategy.dailytrading
