@@ -1,6 +1,7 @@
 pandas
 numpy
-qlib==0.0.2.dev20
+#qlib==0.0.2.dev20
+pyqlib
 pickle5
 optuna
 pandas_market_calendars
