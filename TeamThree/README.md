@@ -111,7 +111,7 @@ database_utils.py provides a simple and reusable class, DatabaseUtils, for handl
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
-| if_return | whether return cursor, conn and engine | bool | Flase |
+| if_return | whether return cursor, conn and engine | bool | False |
 - `execute_query(self, query, params)`: Execute SQL queries with optional parameters
 
 | Parameter Name | Description | Type | Default Value |
@@ -122,10 +122,10 @@ database_utils.py provides a simple and reusable class, DatabaseUtils, for handl
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
-| df | The DataFrame to be inserted into the database | pandas.dataframe | \ |
-| type_list | A list specifying the data types for each column in the DataFrame. It should match the order of the columns in df | list | \ |
-| schema | The DataFrame to be inserted into the database | str | \ |
-| table_name | The name of the table in which the DataFrame will be stored | str | \ |
+| df | The DataFrame to be inserted into the database | pandas.dataframe | / |
+| type_list | A list specifying the data types for each column in the DataFrame. It should match the order of the columns in df | list | / |
+| schema | The DataFrame to be inserted into the database | str | / |
+| table_name | The name of the table in which the DataFrame will be stored | str | / |
 | drop_table | Drop table if table exists | bool | True| 
 - `set_schema(schema)`: Set Schema for the Session as default
 
@@ -143,15 +143,15 @@ alpha_generator.py provides functionality to generate WorldQuant Alpha101 factor
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
-| df | DataFrame containing stock price and volume data | pandas.DataFrame | Flase |
+| df | DataFrame containing stock price and volume data | pandas.DataFrame | False |
 
 - `run_by_ticker(df, tickers, alpha_indices)`: Calculates alpha factors for each ticker
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
-| df | Preprocessed DataFrame | pandas.DataFrame | Flase |
-| tickers | List of stock tickers to process | list | Flase |
-| alpha_indices | List of alpha factor indices to calculate | list | Flase |
+| df | Preprocessed DataFrame | pandas.DataFrame | False |
+| tickers | List of stock tickers to process | list | False |
+| alpha_indices | List of alpha factor indices to calculate | list | False |
 
 - `generate_alphas(input_schema, input_table_name, save, output_schema, output_table_name, if_return)`: generate_alphas(input_schema, input_table_name, save, output_schema, output_table_name, if_return)
 
@@ -159,16 +159,16 @@ alpha_generator.py provides functionality to generate WorldQuant Alpha101 factor
 |---------------|-------------|-----------------|---------------|
 | input_schema | Database schema for input data | str | 'datacollection' |
 | input_table_name | Whether to save results to database | str | 'stock_data' |
-| save | Whether to save results to database | bool | Flase |
+| save | Whether to save results to database | bool | False |
 | output_schema | Schema for output data | str | 'datacollection' |
 | output_table_name | Table for storing alpha factors | str | 'alpha101' |
-| if_return | Whether to return DataFrames | bool | Flase |
+| if_return | Whether to return DataFrames | bool | False |
 
 - `get_alpha101_table_from_db(to_csv)`: Retrieves alpha factors, stock data, and index data
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
-| to_csv | Whether to save data to CSV files | bool | Flase |
+| to_csv | Whether to save data to CSV files | bool | False |
 
 - `get_updated_sentiment_table_from_db()`: Retrieves latest sentiment data
 Returns two DataFrames: live sentiment data and new sentiment data
