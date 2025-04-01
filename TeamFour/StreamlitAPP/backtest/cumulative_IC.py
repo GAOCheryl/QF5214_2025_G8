@@ -243,12 +243,14 @@ def plot_interactive_comparison(with_result, without_result):
     fig.update_xaxes(title_text="Date", row=2, col=1)
     fig.update_yaxes(title_text="Cumulative IC Value", row=1, col=1)
     fig.update_yaxes(title_text="Cumulative Rank IC Value", row=2, col=1)
-    
-    # 保存为HTML文件以便在浏览器中查看
-    fig.write_html("interactive_comparison_ic_and_rank_ic.html")
-    
-    # 显示图表
-    fig.show()
+    html_file_path = "interactive_comparison_ic_and_rank_ic.html"
+    # 检查文件是否存在，如果存在则删除
+    if os.path.exists(html_file_path):
+        os.remove(html_file_path)
+        print(f"已删除现有文件: {html_file_path}")
+    fig.write_html(html_file_path)
+    print(f"已保存HTML文件: {html_file_path}")
+
 
 # 绘制交互式对比图
 plot_interactive_comparison(with_result, without_result) 

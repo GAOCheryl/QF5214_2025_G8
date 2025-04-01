@@ -60,12 +60,16 @@ with col1:
         
         # 获取回测脚本路径
         backtest_script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backtest/vector_backtest.py")
+        cumulative_ic_script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "backtest/cumulative_IC.py")
         
         # 使用subprocess运行回测脚本
         try:
             # 使用相同的Python解释器运行脚本，确保环境一致
             python_executable = sys.executable
+            # 运行主回测脚本
             subprocess.run([python_executable, backtest_script_path], check=True)
+            # 运行累积IC分析脚本
+            subprocess.run([python_executable, cumulative_ic_script_path], check=True)
             st.success("回测完成！")
             st.rerun()  # 重新加载页面以显示新结果
         except subprocess.CalledProcessError as e:
