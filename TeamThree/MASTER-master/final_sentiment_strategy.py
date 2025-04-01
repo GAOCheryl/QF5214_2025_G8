@@ -26,7 +26,7 @@ from alpha_101.alpha_generator import generate_alphas
 from alpha_101.alpha_generator import get_updated_sentiment_table_from_db
 from alpha_101.alpha_generator import get_sentiment_table_from_db
 
-'''
+
 # =============================================================================
 # Generate alpha factors from the stock_data table
 # Returns: (df, final_df)
@@ -96,7 +96,7 @@ filtered_df_all.to_csv("data/Input/updated_stock.csv", index=False)
 filtered_final_df_all.to_csv("data/Input/updated_alpha.csv", index=False)
 df_index.to_csv("data/Input/updated_index.csv", index=False)
 filtered_df_sentiment.to_csv("data/Input/updated_sentiment.csv", index=False)
-'''
+
 # =============================================================================
 # Reload the CSVs and convert Date columns to datetime
 # =============================================================================
@@ -435,17 +435,31 @@ print("IC: {:.4f} pm {:.4f}".format(np.mean(ic), np.std(ic)))
 print("ICIR: {:.4f} pm {:.4f}".format(np.mean(icir), np.std(icir)))
 print("RIC: {:.4f} pm {:.4f}".format(np.mean(ric), np.std(ric)))
 print("RICIR: {:.4f} pm {:.4f}".format(np.mean(ricir), np.std(ricir)))
-print(df_merged_predictions.head())
+print("\nLast 15 rows of df_merged_predictions:")
+print(df_merged_predictions.tail(15))
 
 # =============================================================================
 # Allocation Update Section:
 # =============================================================================
 # Read the updated allocation file and merged predictions file
-df = pd.read_csv("data/Output/Updated_Allocation.csv")
-df_merged_predictions = pd.read_csv("data/Output/updated_predictions.csv")
 
-# Convert Date columns to datetime
-df['Date'] = pd.to_datetime(df['Date'], format='%d/%m/%y')
+# PostgreSQL connection settings
+db_user = "postgres"
+db_password = "qf5214"
+db_host = "134.122.167.14"
+db_port = 5555
+db_name = "QF5214"
+engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
+
+# Define the SQL query to obtain the table from the specified schema and table name.
+query = "SELECT * FROM tradingstrategy.dailytrading"
+
+# Execute the query and load the result into a pandas DataFrame
+df = pd.read_sql(query, engine)
+df['Date'] = pd.to_datetime(df['Date'])
+
+#df = pd.read_csv("data/Output/Updated_Allocation.csv")
+df_merged_predictions = pd.read_csv("data/Output/updated_predictions.csv")
 df_merged_predictions['Date'] = pd.to_datetime(df_merged_predictions['Date'])
 
 # Merge df with df_merged_predictions to get the latest Price column; drop rows with missing Date
@@ -484,8 +498,8 @@ if 'Ticker_x' in df_positions.columns and 'Ticker_y' in df_positions.columns:
     df_positions = df_positions.drop(columns=['Ticker_x', 'Ticker_y'])
 
 df_positions = df_positions.sort_values(['Date', 'Ticker'])
-csv_path = "data/Output/Updated_Allocation.csv"
-df_positions.to_csv(csv_path, index=False)
+#csv_path = "data/Output/Updated_Allocation.csv"
+#df_positions.to_csv(csv_path, index=False)
 
 
 # =============================================================================
@@ -495,7 +509,7 @@ df_positions.to_csv(csv_path, index=False)
 TOP_N = 5  # Number of top stocks selected daily
 TRADING_COST_RATE = 0.001  # 0.1% trading cost per transaction
 
-df = pd.read_csv("data/Output/Updated_Allocation.csv")
+df = df_positions.copy()
 df_merged_predictions = pd.read_csv("data/Output/updated_predictions.csv")
 
 # Convert Date columns using the appropriate format; here we use '%d/%m/%y'
@@ -587,7 +601,10 @@ old_trading_updated = df[['Date', 'Ticker', 'Position_Type', 'Shares', 'Weight']
 # =============================================================================
 # Assume old_trading_updated is already defined and contains a 'Date' column.
 # Ensure 'Date' column is in datetime format
-old_trading_updated['Date'] = pd.to_datetime(old_trading_updated['Date'])
+# Define the SQL query to obtain the table from the specified schema and table name.
+query = "SELECT * FROM tradingstrategy.dailytrading"
+old_trading = pd.read_sql(query, engine)
+old_trading['Date'] = pd.to_datetime(old_trading['Date'])
 
 # Get today's date normalized to midnight
 today = pd.Timestamp(date.today()).normalize()
@@ -603,7 +620,7 @@ else:
     trading = today.dayofweek < 5
 
 # Get the latest date in the table
-latest_date_in_table = old_trading_updated['Date'].max()
+latest_date_in_table = old_trading['Date'].max()
 
 # Condition: today is a trading day AND latest date in table is smaller than today
 if trading and latest_date_in_table < today:
@@ -625,7 +642,7 @@ db_host = "134.122.167.14"
 db_port = 5555
 db_name = "QF5214"
 engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
-
+''''
 file_name = "data/Output/Updated_Allocation.csv"
 
 # Check if the file exists in the current folder
@@ -636,14 +653,14 @@ if os.path.exists(file_name):
     print(df.head())
 else:
     print(f"File '{file_name}' not found in the current directory: {os.getcwd()}")
-
+'''
 # Define target table and schema
 table_name = "dailytrading"
 schema = "tradingstrategy"
 
 # Insert DataFrame into PostgreSQL table using "replace"
 try:
-    df.to_sql(
+    old_trading_updated.to_sql(
         name=table_name,
         con=engine,
         if_exists="replace",  # Overwrite the table if it already exists
