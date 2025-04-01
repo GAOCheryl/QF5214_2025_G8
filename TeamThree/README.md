@@ -206,8 +206,28 @@ List and describe baseline models used for comparison, including their methodolo
 
 | Model Name | Description | Assumptions |
 |------------|-------------|------------|
-| Model1 | Description of Model1 | Assumption1, Assumption2 |
-| Model2 | Description of Model2 | Assumption1, Assumption2 |
+| MASTER without Sentiment | A version of the MASTER model that excludes sentiment data from the prediction process | - Technical factors alone can predict stock movement<br>- Market behavior is primarily driven by price patterns<br>- Historical price information is sufficient for prediction |
+
+The baseline MASTER model follows the same architecture as the full model but eliminates sentiment factors from consideration. This provides a direct comparison to evaluate the incremental value of sentiment analysis in stock prediction.
+Key differences in the baseline model:
+
+Uses only price-based features (d_feat = 97 vs. 106 in the full model)
+Maintains the same multi-head attention mechanism but focuses exclusively on technical factors
+Loads parameters from 'model/model_training_without_sentiment_0.pkl' rather than the sentiment-enabled version
+Outputs predictions to 'data/Output/predictions_without_sentiment.csv'
+
+The baseline model serves as a control to quantify the predictive power added by incorporating sentiment analysis. By comparing performance metrics such as Information Coefficient (IC) and Rank Information Coefficient (RIC) between the two models, we can measure the value of sentiment data in improving prediction accuracy across different market conditions.
+
+Model parameters:
+
+d_feat = 97 (number of technical features)
+d_model = 128 (hidden dimension size)
+t_nhead = 4 (temporal attention heads)
+s_nhead = 2 (spatial attention heads)
+dropout = 0.7 (dropout rate for regularization)
+Learning rate = 1e-5 (smaller than full model to prevent overfitting with fewer features)
+
+This baseline offers a more conservative approach to stock prediction, less subject to noise from sentiment measures but potentially missing important market reaction signals contained in text-based data.
 
 ### 3.5 Performance Table
 Compare the model's performance against baseline models using key performance metrics.
