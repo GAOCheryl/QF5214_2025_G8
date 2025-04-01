@@ -19,7 +19,7 @@ files = [
     "filtered_tweets_nasdaq100_one.csv",
     "filtered_tweets_nasdaq100_two.csv",
 ]
-path = "C:/Users/zly/Desktop/"
+path = "./data/"
 
 def getbpfile(filename):
     stem = Path(filename).stem
