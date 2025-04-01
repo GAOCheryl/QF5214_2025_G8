@@ -159,7 +159,7 @@ with col1:
 
             st.dataframe(scores_df.set_index("Sentiment"), use_container_width=False)
         else:
-            st.info("No sentiment scores available for T-1.")
+            st.info("No sentiment scores available for this date as there are no text data available.")
     except Exception as e:
         st.error(f"Error loading sentiment score table: {e}")
 
