@@ -220,12 +220,12 @@ The baseline model serves as a control to quantify the predictive power added by
 
 Model parameters:
 
-d_feat = 97 (number of technical features)
-d_model = 128 (hidden dimension size)
-t_nhead = 4 (temporal attention heads)
-s_nhead = 2 (spatial attention heads)
-dropout = 0.7 (dropout rate for regularization)
-Learning rate = 1e-5 (smaller than full model to prevent overfitting with fewer features)
+- d_feat = 97 (number of technical features)
+- d_model = 128 (hidden dimension size)
+- t_nhead = 4 (temporal attention heads)
+- s_nhead = 2 (spatial attention heads)
+- dropout = 0.7 (dropout rate for regularization)
+- Learning rate = 1e-5 (smaller than full model to prevent overfitting with fewer features)
 
 This baseline offers a more conservative approach to stock prediction, less subject to noise from sentiment measures but potentially missing important market reaction signals contained in text-based data.
 
