@@ -137,6 +137,7 @@ sql = """
     FROM nlp.sentiment_live
 """
 allsents = pd.read_sql(text(sql), db)
+allsents = allsents[allsents["Emotion Confidence"] >= 0.4]
 
 dailystats = allsents.groupby(["company", "Date"]).agg({
     "Positive": "mean",
