@@ -13,8 +13,8 @@ user = "postgres"
 pw = "qf5214"
 host = "134.122.167.14"
 port = 5555
-dbname = "QF5214"
-db = create_engine(f"postgresql://{user}:{pw}@{host}:{port}/{dbname}")
+db_name = "QF5214"
+db = create_engine(f"postgresql://{user}:{pw}@{host}:{port}/{db_name}")
 
 progfile = "progress_sentiment_live.json"
 if os.path.exists(progfile):
@@ -26,10 +26,10 @@ else:
 
 print(f"Last processed time: {lastprocessed}")
 
-q = """
+q = f"""
     SELECT company, tweet_count, text, created_at, retweets, likes, url, id
     FROM datacollection.tweets_live
-    WHERE created_at > '""" + lastprocessed + """'
+    WHERE created_at > '{lastprocessed}'
     ORDER BY created_at ASC
 """
 with db.connect() as conn:
@@ -95,14 +95,14 @@ for i, row in enumerate(data.itertuples(index=False)):
         tmp = pd.DataFrame(sentdata)
         try:
             tmp.to_sql("sentiment_live", db, if_exists="append", index=False, schema="nlp")
-            okcount = okcount + len(sentdata)
+            okcount += len(sentdata)
             sentdata = []
         except Exception as e:
-            print(f"DB error! Trying one by one.")
+            print(f"DB error! Trying one by one...")
             for thing in sentdata:
                 try:
                     pd.DataFrame([thing]).to_sql("sentiment_live", db, if_exists="append", index=False, schema="nlp")
-                    okcount = okcount + 1
+                    okcount += 1
                 except:
                     continue
             sentdata = []
@@ -111,13 +111,13 @@ if len(sentdata) > 0:
     tmp = pd.DataFrame(sentdata)
     try:
         tmp.to_sql("sentiment_live", db, if_exists="append", index=False, schema="nlp")
-        okcount = okcount + len(sentdata)
+        okcount += len(sentdata)
     except:
         print(f"Final save error! Going one by one.")
         for thing in sentdata:
             try:
                 pd.DataFrame([thing]).to_sql("sentiment_live", db, if_exists="append", index=False, schema="nlp")
-                okcount = okcount + 1
+                okcount += 1
             except:
                 continue
 
@@ -150,6 +150,18 @@ dailystats = allsents.groupby(["company", "Date"]).agg({
     "Disgust": "mean",
     "Intent Sentiment": lambda x: x.value_counts().idxmax()
 }).reset_index()
+
+startday = datetime.strptime(lastprocessed, "%Y-%m-%d %H:%M:%S").strftime("%Y/%m/%d")
+dailystats = dailystats[dailystats["Date"] >= startday]
+updateddays = dailystats["Date"].unique().tolist()
+
+with db.connect() as conn:
+    for day in updateddays:
+        conn.execute(text("""
+            DELETE FROM nlp.sentiment_aggregated_live
+            WHERE "Date" = :day
+        """), {"day": day})
+    print(f"Deleted previous aggregate for: {updateddays}")
 
 dailystats.to_sql(
     name="sentiment_aggregated_live",
