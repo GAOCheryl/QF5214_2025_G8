@@ -26,20 +26,20 @@ Our dataset is a multi-source, multi-factor collection designed for stock price 
 1. Fundamental Stock Data (NASDAQ-100):
 - Time Span: January 1, 2022, to February 28, 2025.
 - Variables: Daily values for close, adjusted close, open, high, low, and volume.
-- Database Source: <code> datacollection.stock_data<code>  table in PostgreSQL
-- Destination: Processed data saved locally to <code> data/Input/updated_stock.csv<code> 
+- Database Source: <code> datacollection.stock_data</code>  table in PostgreSQL
+- Destination: Processed data saved locally to <code> data/Input/updated_stock.csv</code> 
 - Purpose: These fundamentals capture the core trading data and intrinsic stock value changes over time.
 
 2. Alpha 101 Factors
-- Source: Based on the WorldQuant 101 framework, generated using the custom <code>Alphas<code> class
-- Database Source: Raw data retrieved from <code>datacollection.stock_data<code>, processed alphas saved to <code>datacollection.alpha101<code>
-- Destination: Filtered alpha data saved locally to <code>data/Input/updated_alpha.csv<code>
+- Source: Based on the WorldQuant 101 framework, generated using the custom <code>Alphas</code> class
+- Database Source: Raw data retrieved from <code>datacollection.stock_data</code>, processed alphas saved to <code>datacollection.alpha101</code>
+- Destination: Filtered alpha data saved locally to <code>data/Input/updated_alpha.csv</code>
 - Types: Includes both alphas without industry information and alphas with industry information.
 - Purpose: These technical indicators capture dynamic market signals and trading patterns that have been empirically proven to relate to stock price movements.
 
 3. Market Indices:
-- Database Source: <code>datacollection.index_data<code> table in PostgreSQL
-- Destination: Saved locally to <code>data/Input/updated_index.csv<code>
+- Database Source: <code>datacollection.index_data</code> table in PostgreSQL
+- Destination: Saved locally to <code>data/Input/updated_index.csv</code>
 - Indices Included: S&P 500, NASDAQ-100, Russell 1000, Russell 3000, Wilshire 5000.
 - Purpose: Instead of using a single raw index, we extract market-level information by computing current values as well as historical statistics (e.g., mean and standard deviation over various lookback periods). These indicators help reflect the overall market sentiment and conditions.
 
@@ -71,11 +71,11 @@ Finally, each column is normalized (for example, using z-score normalization) to
 The merged dataset is first sorted chronologically by datetime to preserve the temporal order. We then split the data into training, validation, and testing sets in a 6:2:2 proportion. This careful partitioning allows the model to learn from historical data and be evaluated on unseen data. Finally, we save each split into pickle files:
 
 ```python
-with open("training_input.pkl", "wb") as f:
+with open("data/Input/training_sentiment_input.pkl", "wb") as f:
     pickle.dump(dl_train, f)
-with open("valid_input.pkl", "wb") as f:
+with open("data/Input/valid_sentiment_input.pkl", "wb") as f:
     pickle.dump(dl_valid, f)
-with open("testing_input.pkl", "wb") as f:
+with open("data/Input/testing_sentiment_input.pkl", "wb") as f:
     pickle.dump(dl_test, f)
 ```   
 
@@ -118,7 +118,7 @@ The output value indicates the expected percentage change in the stock’s price
 
 2. Output Storage:
 - The final DataFrame contains columns for Date, Ticker, Predicted_Return, Actual_Return, Price, and Market_Cap.
-- This comprehensive prediction dataset is saved to a CSV file at <code>data/Output/updated_predictions.csv<code>
+- This comprehensive prediction dataset is saved to a CSV file at <code>data/Output/updated_predictions.csv</code>
 - The file serves as the foundation for the trading strategy implementation, position sizing, and performance evaluation
 
 3. Evaluation Metrics:
@@ -128,15 +128,15 @@ The model’s output is evaluated using ranking metrics such as the Information 
 The trading strategy implementation includes an automated daily execution plan that updates positions based on the latest model predictions. This section details the operational workflow for how the strategy is executed in practice.
 
 1. Database Retrieval:
-- Retrieve current positions from the PostgreSQL database <code>tradingstrategy.dailytrading<code>
-- Load the latest model predictions from the locally stored CSV file <code>data/Output/updated_predictions.csv<code>
+- Retrieve current positions from the PostgreSQL database <code>tradingstrategy.dailytrading</code>
+- Load the latest model predictions from the locally stored CSV file <code>data/Output/updated_predictions.csv</code>
 
 2. New Position Selection:
 Base on the trading strategy, select stocks with long positions or short positions, and add these new positions to the portfolio with appropriate weights. 
 
 3. Database and File Updates:
-- Save the updated positions in a local CSV file <code>data/Output/Updated_Allocation.csv<code>
-- Update the PostgreSQL database table <code>tradingstrategy.dailytrading<code>
+- Save the updated positions in a local CSV file <code>data/Output/Updated_Allocation.csv</code>
+- Update the PostgreSQL database table <code>tradingstrategy.dailytrading</code>
 
 
 ## Cite
