@@ -11,6 +11,7 @@ import time
 import optuna
 import pandas as pd
 from datetime import date
+from datetime import datetime
 import pandas_market_calendars as mcal
 from sqlalchemy import create_engine
 
@@ -609,15 +610,23 @@ old_trading['Date'] = pd.to_datetime(old_trading['Date'])
 # Get today's date normalized to midnight
 today = pd.Timestamp(date.today()).normalize()
 
-# Check if today is a trading day
-trading = False
-if mcal is not None:
+# Normalize today's date (set time to midnight)
+today = pd.Timestamp(datetime.today().date())
+try:
+    # Get the NYSE calendar
     nyse = mcal.get_calendar('NYSE')
+    # Request the trading schedule for today only
     schedule = nyse.schedule(start_date=today, end_date=today)
+    # If the schedule is empty, today is not a trading day (e.g. holiday or weekend)
     trading = not schedule.empty
-else:
-    # Fallback: assume trading day if weekday (Monday=0, Friday=4)
+except Exception as e:
+    # Fallback: if for some reason mcal isn't working, assume a trading day if it's a weekday
     trading = today.dayofweek < 5
+
+if trading:
+    print(f"Today ({today.date()}) is a trading day.")
+else:
+    print(f"Today ({today.date()}) is not a trading day.")
 
 # Get the latest date in the table
 latest_date_in_table = old_trading['Date'].max()
@@ -642,18 +651,7 @@ db_host = "134.122.167.14"
 db_port = 5555
 db_name = "QF5214"
 engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
-''''
-file_name = "data/Output/Updated_Allocation.csv"
 
-# Check if the file exists in the current folder
-if os.path.exists(file_name):
-    print(f"File '{file_name}' found in the current directory.")
-    # Load and display the first few rows of the CSV file
-    df = pd.read_csv(file_name)
-    print(df.head())
-else:
-    print(f"File '{file_name}' not found in the current directory: {os.getcwd()}")
-'''
 # Define target table and schema
 table_name = "dailytrading"
 schema = "tradingstrategy"
@@ -670,3 +668,4 @@ try:
     print(f"Data successfully stored in {schema}.{table_name} (table replaced if it existed).")
 except Exception as e:
     print(f"Error storing data: {e}")
+    
