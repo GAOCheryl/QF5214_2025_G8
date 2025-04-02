@@ -57,7 +57,7 @@ The published data went through the following necessary preprocessing. In this p
 
 1. Fundamental Data Preprocessing:
 We first compute key fundamental indicators to capture the basic trading information. Specifically:
-- Typical Price: Calculated as (High+Low+Close)/3(High+Low+Close)/3, this represents a representative price for the day.
+- Typical Price: Calculated as (High+Low+Close)/3, this represents a representative price for the day.
 - Return: The per-ticker daily percentage change of the Close price is computed to measure stock performance.
 - 5-Period VWAP: A 5-day rolling volume-weighted average price is derived from the Typical Price and Volume to reflect the average trading price adjusted for volume.
 
