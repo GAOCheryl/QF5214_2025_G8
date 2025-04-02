@@ -153,15 +153,13 @@ dailystats = allsents.groupby(["company", "Date"]).agg({
 
 startday = datetime.strptime(lastprocessed, "%Y-%m-%d %H:%M:%S").strftime("%Y/%m/%d")
 dailystats = dailystats[dailystats["Date"] >= startday]
-updateddays = dailystats["Date"].unique().tolist()
 
 with db.connect() as conn:
-    for day in updateddays:
-        conn.execute(text("""
-            DELETE FROM nlp.sentiment_aggregated_live
-            WHERE "Date" = :day
-        """), {"day": day})
-    print(f"Deleted previous aggregate for: {updateddays}")
+    conn.execute(text("""
+        DELETE FROM nlp.sentiment_aggregated_live
+        WHERE "Date" >= :day
+    """), {"day": startday})
+print(f"Deleted previous aggregate for dates >= {startday}")
 
 dailystats.to_sql(
     name="sentiment_aggregated_live",
