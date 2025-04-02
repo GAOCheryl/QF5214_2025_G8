@@ -17,8 +17,7 @@ Our original experiments were conducted in a complex business codebase developed
 
 3. Run main.py to start training or evaluation.
 
-5. Pre-trained models are available in: <code> model/model_training_0.pkl, model/model_training_1.pkl, model/model_training_2.pkl, model/model_training_3.pkl, and model/model_training_4.pkl</code>. You can load these models for evaluation or further training.
-
+5. Pre-trained models are available in: <code> model/model_training_with_sentiment_0.pkl, model/model_training_without_sentiment_0.pkl</code>. You can load these models for evaluation or further training.
 
 ## Dataset
 Our dataset is a multi-source, multi-factor collection designed for stock price forecasting in the US market. It integrates fundamental stock data, a wide range of technical factors (alphas), market index indicators, and sentiment factors to provide a rich and diverse input for forecasting models.
@@ -27,14 +26,20 @@ Our dataset is a multi-source, multi-factor collection designed for stock price 
 1. Fundamental Stock Data (NASDAQ-100):
 - Time Span: January 1, 2022, to February 28, 2025.
 - Variables: Daily values for close, adjusted close, open, high, low, and volume.
+- Database Source: <code> datacollection.stock_data<code>  table in PostgreSQL
+- Destination: Processed data saved locally to <code> data/Input/updated_stock.csv<code> 
 - Purpose: These fundamentals capture the core trading data and intrinsic stock value changes over time.
 
 2. Alpha 101 Factors
-- Source: Based on the WorldQuant 101 framework
+- Source: Based on the WorldQuant 101 framework, generated using the custom <code>Alphas<code> class
+- Database Source: Raw data retrieved from <code>datacollection.stock_data<code>, processed alphas saved to <code>datacollection.alpha101<code>
+- Destination: Filtered alpha data saved locally to <code>data/Input/updated_alpha.csv<code>
 - Types: Includes both alphas without industry information and alphas with industry information.
-- Purpose: These technical indicators (e.g., Moving Average, Bollinger Bands, RSI, MACD, etc.) serve to capture dynamic market signals and trading patterns that have been empirically proven to relate to stock price movements.
+- Purpose: These technical indicators capture dynamic market signals and trading patterns that have been empirically proven to relate to stock price movements.
 
 3. Market Indices:
+- Database Source: <code>datacollection.index_data<code> table in PostgreSQL
+- Destination: Saved locally to <code>data/Input/updated_index.csv<code>
 - Indices Included: S&P 500, NASDAQ-100, Russell 1000, Russell 3000, Wilshire 5000.
 - Purpose: Instead of using a single raw index, we extract market-level information by computing current values as well as historical statistics (e.g., mean and standard deviation over various lookback periods). These indicators help reflect the overall market sentiment and conditions.
 
@@ -109,13 +114,29 @@ Our adapted MASTER model uses the following hyperparameters:
 The MASTER model is designed to forecast normalized return ratios for each stock. Specifically, after processing the input tensor through market-guided gating, intra-stock aggregation, inter-stock aggregation, and temporal aggregation layers, the model produces a comprehensive embedding for each stock. This embedding is then passed through a final prediction layer (a simple linear layer) to output a continuous value representing the normalized future return.
 
 1. Return Ratio:
-The output value indicates the expected percentage change in the stock’s price over a predetermined prediction interval. 
+The output value indicates the expected percentage change in the stock’s price over a predetermined prediction interval. A higher predicted value suggests a more bullish signal (i.e., the stock is expected to appreciate), while a lower predicted value indicates a bearish outlook. 
 
-2. Interpreting Predictions:
-A higher predicted value suggests a more bullish signal (i.e., the stock is expected to appreciate), while a lower predicted value indicates a bearish outlook. 
+2. Output Storage:
+- The final DataFrame contains columns for Date, Ticker, Predicted_Return, Actual_Return, Price, and Market_Cap.
+- This comprehensive prediction dataset is saved to a CSV file at <code>data/Output/updated_predictions.csv<code>
+- The file serves as the foundation for the trading strategy implementation, position sizing, and performance evaluation
 
 3. Evaluation Metrics:
 The model’s output is evaluated using ranking metrics such as the Information Coefficient (IC), Rank IC, and their corresponding information ratio versions (ICIR and RankICIR). These metrics quantify how well the predicted ranking aligns with the actual future returns.
+
+## Trading Strategy
+The trading strategy implementation includes an automated daily execution plan that updates positions based on the latest model predictions. This section details the operational workflow for how the strategy is executed in practice.
+
+1. Database Retrieval:
+- Retrieve current positions from the PostgreSQL database <code>tradingstrategy.dailytrading<code>
+- Load the latest model predictions from the locally stored CSV file <code>data/Output/updated_predictions.csv<code>
+
+2. New Position Selection:
+Base on the trading strategy, select stocks with long positions or short positions, and add these new positions to the portfolio with appropriate weights. 
+
+3. Database and File Updates:
+- Save the updated positions in a local CSV file <code>data/Output/Updated_Allocation.csv<code>
+- Update the PostgreSQL database table <code>tradingstrategy.dailytrading<code>
 
 
 ## Cite
