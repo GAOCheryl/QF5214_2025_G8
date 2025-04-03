@@ -97,9 +97,6 @@ for i, row in enumerate(df.itertuples(index=False), start=0):
         except Exception as e:
             print(f"Error processing}")
 
-
-
-
         if len(to_insert) >= 100:
             df_batch = pd.DataFrame(to_insert)
             table_name = f"sentiment_raw_data_{Path(file_name).stem.split('_')[-1]}"
