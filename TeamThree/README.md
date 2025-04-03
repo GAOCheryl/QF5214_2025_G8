@@ -112,7 +112,7 @@ The repository includes Python modules for data processing. Key scripts include:
 -   [alpha_generator.py](#alpha_generatorpy)
 
 ###  database_utils
-database_utils.py provides a simple and reusable class, DatabaseUtils, for handling PostgreSQL database connections and queries in Python. It includes methods for connecting to the database, executing queries, fetching results, and closing connections.
+<code>database_utils.py</code> provides a simple and reusable class, DatabaseUtils, for handling PostgreSQL database connections and queries in Python. It includes methods for connecting to the database, executing queries, fetching results, and closing connections.
 - `connect(self, if_return)`: Establish a PostgreSQL database connection
 
 | Parameter Name | Description | Type | Default Value |
@@ -143,7 +143,7 @@ database_utils.py provides a simple and reusable class, DatabaseUtils, for handl
 - Handle errors and rollbacks gracefully
 
 ###  alpha_generator
-alpha_generator.py provides functionality to generate WorldQuant Alpha101 factors, process stock data, index data, and sentiment data for quantitative trading models. It includes methods for data preprocessing, running alpha calculations by ticker, and retrieving data from PostgreSQL databases.
+<code>alpha_generator.py</code> provides functionality to generate WorldQuant Alpha101 factors, process stock data, index data, and sentiment data for quantitative trading models. It includes methods for data preprocessing, running alpha calculations by ticker, and retrieving data from PostgreSQL databases.
 
 - `data_preprocessing(df)`: Prepares stock data for alpha calculation
 
