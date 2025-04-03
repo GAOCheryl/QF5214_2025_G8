@@ -149,15 +149,15 @@ The repository includes Python modules for data processing. Key scripts include:
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
-| df | DataFrame containing stock price and volume data | pandas.DataFrame | False |
+| df | DataFrame containing stock price and volume data | pandas.DataFrame | / |
 
 - `run_by_ticker(df, tickers, alpha_indices)`: Calculates alpha factors for each ticker
 
 | Parameter Name | Description | Type | Default Value |
 |---------------|-------------|-----------------|---------------|
-| df | Preprocessed DataFrame | pandas.DataFrame | False |
-| tickers | List of stock tickers to process | list | False |
-| alpha_indices | List of alpha factor indices to calculate | list | False |
+| df | Preprocessed DataFrame | pandas.DataFrame | / |
+| tickers | List of stock tickers to process | list | / |
+| alpha_indices | List of alpha factor indices to calculate | list | / |
 
 - `generate_alphas(input_schema, input_table_name, save, output_schema, output_table_name, if_return)`: generate_alphas(input_schema, input_table_name, save, output_schema, output_table_name, if_return)
 
