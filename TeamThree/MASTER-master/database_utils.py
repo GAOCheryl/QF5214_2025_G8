@@ -9,8 +9,8 @@ class database_utils:
     def __init__(self):
         self.database = os.getenv("DB_NAME", "QF5214")
         self.user = os.getenv("DB_USER", "postgres")
-        self.password = os.getenv("DB_PASSWORD", "qf5214")
-        self.host = os.getenv("DB_HOST", "134.122.167.14")
+        self.password = os.getenv("DB_PASSWORD", "qf5214G8")
+        self.host = os.getenv("DB_HOST", "pgm-t4n365kyk1sye1l7eo.pgsql.singapore.rds.aliyuncs.com")
         self.port = os.getenv("DB_PORT", "5555")
         self.conn = None
         self.cursor = None

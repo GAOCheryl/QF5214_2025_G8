@@ -9,8 +9,8 @@ class database_utils:
     def __init__(self):
         self.database = os.getenv("DB_NAME", "QF5214")
         self.user = os.getenv("DB_USER", "postgres")
-        self.password = os.getenv("DB_PASSWORD", "qf5214")
-        self.host = os.getenv("DB_HOST", "134.122.167.14")
+        self.password = os.getenv("DB_PASSWORD", "qf5214G8")
+        self.host = os.getenv("DB_HOST", "pgm-t4n365kyk1sye1l7eo.pgsql.singapore.rds.aliyuncs.com")
         self.port = os.getenv("DB_PORT", "5555")
         self.conn = None
         self.cursor = None
@@ -72,33 +72,55 @@ class database_utils:
             self.conn.close()
 
 
-if __name__ == "__main__":
-    db = database_utils()
-    db.connect()
+# if __name__ == "__main__":
+#     db = database_utils()
+#     db.connect()
     
-    # Fetch all table names from datacollection schema
-    db.execute_query("""
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'datacollection'
-    """)
-    tables = db.fetch_results()
+#     # Fetch all table names from datacollection schema
+#     db.execute_query("""
+#         SELECT table_name 
+#         FROM information_schema.tables 
+#         WHERE table_schema = 'datacollection'
+#     """)
+#     tables = db.fetch_results()
 
-    # Iterate through tables and get column names for each
-    for table in tables:
-        table_name = table[0]
-        print(f"\n🔹 Table: {table_name}")
+#     # Iterate through tables and get column names for each
+#     for table in tables:
+#         table_name = table[0]
+#         print(f"\n🔹 Table: {table_name}")
 
-        # Fetch column names for the current table
-        db.execute_query(f"""
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = %s
-        """, (table_name,))
-        columns = db.fetch_results()
+#         # Fetch column names for the current table
+#         db.execute_query(f"""
+#             SELECT column_name 
+#             FROM information_schema.columns 
+#             WHERE table_name = %s
+#         """, (table_name,))
+#         columns = db.fetch_results()
 
-        column_names = [col[0] for col in columns]
-        print(f"   Columns: {', '.join(column_names)}")
+#         column_names = [col[0] for col in columns]
+#         print(f"   Columns: {', '.join(column_names)}")
         
 
-    db.close_connection()
+#     db.close_connection()
+    
+
+
+# if __name__ == "__main__":
+#     import pandas as pd
+    # db = database_utils()
+    # db.connect()
+    # query_input = f'''
+    #     SELECT company, created_at
+    #     FROM datacollection.x_batch
+    # '''
+    # # nlp.
+    # db.execute_query(query_input)
+    # df_stock = pd.DataFrame(db.fetch_results())
+    # df_stock.columns = ['company', 'created_at']
+    # df_stock['created_at'] = pd.to_datetime(df_stock['created_at']).dt.date
+    # # Step 2: Group by 'company' and count unique dates in 'created_at'
+    # result = df_stock.groupby('company')[['created_at']].nunique()
+    # print(type(result))
+    # result.to_csv('series_log.csv')
+    # print(result)
+    # db.close_connection()

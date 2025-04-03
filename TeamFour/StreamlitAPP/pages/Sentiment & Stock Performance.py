@@ -37,14 +37,15 @@ st.title("Sentiment & Stock Performance")
 st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
 
 # --- DB Connection ---
-host = "134.122.167.14"
+host = "pgm-t4n365kyk1sye1l7eo.pgsql.singapore.rds.aliyuncs.com"
 port = "5555"
 database = "QF5214"
 user = "postgres"
-password = "qf5214"
+password = "qf5214G8"
 
 db_url = f"postgresql://{user}:{password}@{host}:{port}/{database}"
 engine = create_engine(db_url)
+
 
 # --- Get latest available date and tickers (long + short) ---
 try:

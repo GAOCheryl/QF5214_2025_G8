@@ -13,7 +13,7 @@ import pandas as pd
 from datetime import date
 from datetime import datetime
 import pandas_market_calendars as mcal
-from sqlalchemy import create_engine
+from database_utils import *
 
 
 # Add the parent directory to sys.path so that modules from one level up can be imported.
@@ -445,13 +445,8 @@ print(df_merged_predictions.tail(15))
 # Read the updated allocation file and merged predictions file
 
 # PostgreSQL connection settings
-db_user = "postgres"
-db_password = "qf5214"
-db_host = "134.122.167.14"
-db_port = 5555
-db_name = "QF5214"
-engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
-
+db = database_utils()
+_, _, engine = db.connect(if_return = True)
 # Define the SQL query to obtain the table from the specified schema and table name.
 query = "SELECT * FROM tradingstrategy.dailytrading"
 
@@ -640,17 +635,14 @@ if trading and latest_date_in_table < today:
 else:
     print(f"Today ({today.date()}) is not a trading day or the table is already up-to-date (latest date: {latest_date_in_table.date()}). CSV not saved.")
 
+db.close_connection()
 
 # =============================================================================
 # Store the final DataFrame into PostgreSQL:
 # =============================================================================
 # PostgreSQL connection settings
-db_user = "postgres"
-db_password = "qf5214"
-db_host = "134.122.167.14"
-db_port = 5555
-db_name = "QF5214"
-engine = create_engine(f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}")
+db = database_utils()
+_, _, engine = db.connect(if_return = True)
 
 # Define target table and schema
 table_name = "dailytrading"
@@ -668,4 +660,6 @@ try:
     print(f"Data successfully stored in {schema}.{table_name} (table replaced if it existed).")
 except Exception as e:
     print(f"Error storing data: {e}")
+    
+db.close_connection()
     
