@@ -9,8 +9,8 @@ analyzer = SentimentEmotionAnalyzer()
 
 # PostgreSQL connection settings
 db_user = "postgres"
-db_password = "qf5214"
-db_host = "134.122.167.14"
+db_password = "qf5214G8"
+db_host = "pgm-t4n365kyk1sye1l7eo.pgsql.singapore.rds.aliyuncs.com"
 db_port = 5555
 db_name = "QF5214"
 
@@ -96,9 +96,6 @@ for i, row in enumerate(df.itertuples(index=False), start=0):
                 
         except Exception as e:
             print(f"Error processing}")
-
-
-
 
         if len(to_insert) >= 100:
             df_batch = pd.DataFrame(to_insert)
