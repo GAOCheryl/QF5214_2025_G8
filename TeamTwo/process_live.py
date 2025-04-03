@@ -98,7 +98,7 @@ for i, row in enumerate(data.itertuples(index=False)):
             okcount = okcount + len(sentdata)
             sentdata = []
         except Exception as e:
-            print(f"DB error! Trying one by one.")
+            print(f"DB error! Trying one by one...")
             for thing in sentdata:
                 try:
                     pd.DataFrame([thing]).to_sql("sentiment_live", db, if_exists="append", index=False, schema="nlp")
@@ -137,6 +137,7 @@ sql = """
     FROM nlp.sentiment_live
 """
 allsents = pd.read_sql(text(sql), db)
+allsents = allsents[allsents["Emotion Confidence"] >= 0.4]
 
 dailystats = allsents.groupby(["company", "Date"]).agg({
     "Positive": "mean",
@@ -151,11 +152,23 @@ dailystats = allsents.groupby(["company", "Date"]).agg({
     "Intent Sentiment": lambda x: x.value_counts().idxmax()
 }).reset_index()
 
-dailystats.to_sql(
-    name="sentiment_aggregated_live",
-    con=db,
-    if_exists="append",
-    index=False,
-    schema="nlp"
+existing = pd.read_sql(
+    text('SELECT company, "Date" FROM nlp.sentiment_aggregated_live'),
+    db
 )
+dailystats = dailystats.merge(existing, on=["company", "Date"], how="left", indicator=True)
+dailystats = dailystats[dailystats["_merge"] == "left_only"].drop(columns=["_merge"])
+
+if not dailystats.empty:
+    dailystats.to_sql(
+        name="sentiment_aggregated_live",
+        con=db,
+        if_exists="append",
+        index=False,
+        schema="nlp"
+    )
+    print(f"Saved {len(dailystats)} new aggregated rows.")
+else:
+    print("No new data to aggregate.")
+
 print("All done! Stats saved.")

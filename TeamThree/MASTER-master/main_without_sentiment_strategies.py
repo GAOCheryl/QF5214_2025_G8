@@ -29,7 +29,7 @@ df, final_df = generate_alphas(input_schema = 'datacollection',
                     output_schema = 'datacollection',
                     output_table_name = 'alpha101',
                     if_return = True)
-
+'''
 df_all, final_df_all, df_index = get_alpha101_table_from_db()
 
 company_list = company_list = ["ADBE", "AMD", "ABNB", "GOOGL", "GOOG", "AMZN", "AEP", "AMGN", 
@@ -48,7 +48,7 @@ filtered_final_df_all.to_csv("data/Input/alpha.csv", index=False)
 df_index.to_csv("data/Input/index.csv", index=False)
 
 print("Save all the input data")
-'''
+
 
 df_all = pd.read_csv("data/Input/stock.csv")
 final_df_all = pd.read_csv("data/Input/alpha.csv")
