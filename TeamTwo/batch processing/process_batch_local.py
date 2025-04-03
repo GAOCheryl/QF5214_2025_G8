@@ -9,8 +9,8 @@ analyzer = SentimentEmotionAnalyzer()
 
 # PostgreSQL connection settings
 db_user = "postgres"
-db_password = "qf5214"
-db_host = "134.122.167.14"
+db_password = "qf5214G8"
+db_host = "pgm-t4n365kyk1sye1l7eo.pgsql.singapore.rds.aliyuncs.com"
 db_port = 5555
 db_name = "QF5214"
 
