@@ -4,10 +4,10 @@ from tqdm import tqdm
 from datetime import datetime
 import psycopg2
 
-print("49 Companies and 40 tweets per extraction")
+print("69 Companies and 40 tweets per extraction")
 
 # Twitter API config
-API_KEY = "93af433a8ff843819d702acbfadcc895"
+API_KEY = "4e94cbd5c04e44fb8712203476911270"
 base_url = "https://api.twitterapi.io/twitter/tweet/advanced_search"
 headers = {"X-API-Key": API_KEY}
 
@@ -18,7 +18,10 @@ tickers = [
     "TEAM", "ADSK", "ADP", "AXON", "BKR", "BIIB", "BKNG", "AVGO", 
     "CDNS", "CDW", "CHTR", "CTAS", "CSCO", "CCEP", "CTSH", "CMCSA", 
     "CEG", "CPRT", "CSGP", "COST", "CRWD", "CSX", "DDOG", "DXCM", 
-    "VRTX", "WBD", "WDAY", "XEL", "ZS", "QCOM", "REGN", "ROP", "ROST"
+    "VRTX", "WBD", "WDAY", "XEL", "ZS", "QCOM", "REGN", "ROP", "ROST",
+    "FAST", "FTNT", "GEHC", "GILD" ,"ON", "PCAR", "PLTR", "PANW",
+    "PAYX", "PYPL", "PDD", "PEP","SBUX", "SNPS", "TTWO", 
+    "TMUS","TSLA", "TXN", "TTD", "VRSK"
 ]
 
 # Number of tweets per ticker
@@ -87,11 +90,13 @@ print(f"📦 Total tweets collected: {len(df)}")
 
 # PostgreSQL connection config
 db_config = {
-    "user": 'postgres',
-    "password": 'qf5214G8',
-    "host": 'pgm-t4n365kyk1sye1l7eo.pgsql.singapore.rds.aliyuncs.com',
-    "port": '5555'
+    "host": "pgm-t4n365kyk1sye1l7eo.pgsql.singapore.rds.aliyuncs.com",
+    "port": "5555",
+    "dbname": "QF5214",
+    "user": "postgres",
+    "password": "qf5214G8"
 }
+
 
 # Insert into PostgreSQL
 try:
