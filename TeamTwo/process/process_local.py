@@ -8,8 +8,8 @@ from pathlib import Path
 analyzer = SentimentEmotionAnalyzer()
 
 user = "postgres"
-pw = "qf5214"
-host = "134.122.167.14"
+pw = "qf5214G8"
+host = "pgm-t4n365kyk1sye1l7eo.pgsql.singapore.rds.aliyuncs.com"
 port = 5555
 dbname = "QF5214"
 
