@@ -36,7 +36,7 @@ st.markdown("""
 <p style='padding: 0 10%; font-size: 16px; color: #444;'>
 
 <b> Main Portfolio Analysis</b><br>
-Visualizes our strategy performance with and without sentiment factors. Includes backtest results and IC comparisons to evaluate predictive power.
+Visualizes our strategy performance with sentiment factors. Includes backtest results and IC comparisons to evaluate predictive power.
 <br><br>
 
 <b> Market Sentiment Trends</b><br>
