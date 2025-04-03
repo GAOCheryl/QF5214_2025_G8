@@ -37,14 +37,15 @@ st.title("Sentiment & Stock Performance")
 st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
 
 # --- DB Connection ---
-host = "134.122.167.14"
+host = "pgm-t4n365kyk1sye1l7eo.pgsql.singapore.rds.aliyuncs.com"
 port = "5555"
 database = "QF5214"
 user = "postgres"
-password = "qf5214"
+password = "qf5214G8"
 
 db_url = f"postgresql://{user}:{password}@{host}:{port}/{database}"
 engine = create_engine(db_url)
+
 
 # --- Get latest available date and tickers (long + short) ---
 try:
@@ -54,15 +55,6 @@ try:
     latest_trading_date = pd.to_datetime(latest_trading_date).date()
     sentiment_date_obj = latest_trading_date - timedelta(days=1)
     sentiment_date_str = sentiment_date_obj.strftime('%Y/%m/%d')
-
-    st.markdown(
-        f"""
-        <div style="text-align: center; color: #999; font-size: 16px; margin-top: -10px;">
-            ⚠️ <i>Testing Phase – trading data from <b>{latest_trading_date}</b>, sentiment from <b>{sentiment_date_str}</b></i>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
 
     ticker_query = f"""
         SELECT DISTINCT "Ticker", "Position_Type"
