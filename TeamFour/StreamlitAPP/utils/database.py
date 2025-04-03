@@ -7,8 +7,8 @@ import polars as pl
 DB_CONFIGS = {
     'QF5214': {
         'user': 'postgres',
-        'password': 'qf5214',
-        'host': '134.122.167.14',
+        'password': 'qf5214G8',
+        'host': 'pgm-t4n365kyk1sye1l7eo.pgsql.singapore.rds.aliyuncs.com',
         'port': '5555',
     },
 }
