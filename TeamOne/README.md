@@ -1,5 +1,4 @@
 # QF5214_Group 8 Team_1 README    
-- An overview of the folder structure for Team 1.
 
 ## 1 Stock_data/
 - Contains files related to stock data(open, close, etc.) and 5 well-known market indices data.
@@ -29,5 +28,5 @@
     ```
 - **2.3 Tweets**
   - Used to temporarily store the script's output. Considering that the CSV files are relatively small, we decided to output everything as CSV files first. Once data for all companies has been scraped, the files will be collectively written into the PostgreSQL database. -- Done with `transform.py` into datacollection.X batch table.
--  **2.4 getlivedata**
+- **2.4 getlivedata**
   - A script utilizing `TwitterAPI.io` to implement more stable data scraping, which writes the collected tweets of the previous day directly into the database(datacollection.tweets_live table) after crawling.
