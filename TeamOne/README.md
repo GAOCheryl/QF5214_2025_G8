@@ -1,11 +1,12 @@
 # QF5214_Group 8 Team_1 README    
+- An overview of the folder structure for Team 1.
 
 ## 1 Stock_data/
-- Contains files related to stock data(open, close, etc.).
+- Contains files related to stock data(open, close, etc.) and 5 well-known market indices data.
   
 ## 2 X_data/
 - **2.1 The X_1 and X_3 directories**
-  - contain the first version of the script and its execution method. Each time, we manually changed the names of four companies in the script, pulled the code from GitHub, and ran it on Alibaba ECS. This method was executed twice, and the resulting text data can be found in the respective folders:
+  - contain the first version of the script and its execution method. Each time, we manually changed the names of four companies in the script, pulled the code from GitHub, and ran it on Alibaba Cloud ECS at the background. This method was executed twice, and the resulting text data can be found in the respective folders:
   - X_1 contains data for the companies: "ADBE", "AMD", "ABNB", "GOOGL"
   - X_3 contains data for the companies: "ADI", "ANSS", "AAPL", "AMAT"
 - **2.2 The getX folder**
@@ -13,7 +14,7 @@
   - **Script Modifications:**
     - The script has been modified to include `input()` prompts for the company names and the output filename.
     - Each time the code runs, a user interaction dialog appears for entering the desired company list and file name.
-    - This modification is designed to allow the simultaneous execution of scripts with different config.ini files, different company name lists, and different output file names.
+    - This modification is designed to allow the simultaneous execution of scripts with different config.ini files, different company name lists, and different output file names on diffrent VMs.
   - **Execution Method:**
     - The script runs within a Docker container on Alibaba Cloud ECS.
     - The Docker image is built as described in the Dockerfile.
@@ -27,10 +28,6 @@
      /bin/sh -c "python get_X_text.py && cp /getX/*.csv /output/"        # Run a shell command that executes the Python script and then copies any CSV files from /getX to /output.
     ```
 - **2.3 Tweets**
-  - Used to temporarily store the script's output (considering that the CSV files are relatively small, we decided to output everything as CSV files first. Once data for all companies has been scraped, the files will be collectively written into the PostgreSQL database).
-
-## 3 sql transformation.ipynb
-  Demonstrating how to perform SQL-related data transformations.(from csv to PostGreSQL)
-
-## 4 README.md
-  The current document, providing an overview of the project, its structure, and usage instructions.
+  - Used to temporarily store the script's output. Considering that the CSV files are relatively small, we decided to output everything as CSV files first. Once data for all companies has been scraped, the files will be collectively written into the PostgreSQL database. -- Done with `transform.py` into datacollection.X batch table.
+-  **2.4 getlivedata**
+  - A script utilizing `TwitterAPI.io` to implement more stable data scraping, which writes the collected tweets of the previous day directly into the database(datacollection.tweets_live table) after crawling.
