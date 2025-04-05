@@ -6,7 +6,7 @@ import pandas as pd
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
-from filter.filter import clean_text, filter_text, filter_irrelevant_comments, remove_stock_symbols_flexible
+from filter import clean_text, filter_text, filter_irrelevant_comments, remove_stock_symbols_flexible
 from nlp.SentimentEmotionAnalyzer import SentimentEmotionAnalyzer
 
 analyzer = SentimentEmotionAnalyzer()
