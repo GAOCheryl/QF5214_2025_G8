@@ -618,6 +618,9 @@ except Exception as e:
     # Fallback: if for some reason mcal isn't working, assume a trading day if it's a weekday
     trading = today.dayofweek < 5
 
+
+
+
 if trading:
     print(f"Today ({today.date()}) is a trading day.")
 else:
@@ -632,6 +635,28 @@ if trading and latest_date_in_table < today:
     old_trading_updated.to_csv(csv_path, index=False)
     print(f"Today ({today.date()}) is a trading day and latest date in table ({latest_date_in_table.date()}) is before today.")
     print(f"Saved updated_predictions.csv to {csv_path}.")
+
+    db = database_utils()
+    _, _, engine = db.connect(if_return = True)
+
+    # Define target table and schema
+    table_name = "dailytrading"
+    schema = "tradingstrategy"
+
+    # Insert DataFrame into PostgreSQL table using "replace"
+    try:
+        old_trading_updated.to_sql(
+            name=table_name,
+            con=engine,
+            if_exists="replace",  # Overwrite the table if it already exists
+            index=False,
+            schema=schema
+        )
+        print(f"Data successfully stored in {schema}.{table_name} (table replaced if it existed).")
+    except Exception as e:
+        print(f"Error storing data: {e}")
+        
+    db.close_connection()
 else:
     print(f"Today ({today.date()}) is not a trading day or the table is already up-to-date (latest date: {latest_date_in_table.date()}). CSV not saved.")
 
@@ -641,25 +666,4 @@ db.close_connection()
 # Store the final DataFrame into PostgreSQL:
 # =============================================================================
 # PostgreSQL connection settings
-db = database_utils()
-_, _, engine = db.connect(if_return = True)
 
-# Define target table and schema
-table_name = "dailytrading"
-schema = "tradingstrategy"
-
-# Insert DataFrame into PostgreSQL table using "replace"
-try:
-    old_trading_updated.to_sql(
-        name=table_name,
-        con=engine,
-        if_exists="replace",  # Overwrite the table if it already exists
-        index=False,
-        schema=schema
-    )
-    print(f"Data successfully stored in {schema}.{table_name} (table replaced if it existed).")
-except Exception as e:
-    print(f"Error storing data: {e}")
-    
-db.close_connection()
-    
