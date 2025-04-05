@@ -3,7 +3,10 @@ from sqlalchemy import create_engine
 from datetime import datetime
 import os
 import json
+import sys
 from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+from nlp.SentimentEmotionAnalyzer import SentimentEmotionAnalyzer
 
 analyzer = SentimentEmotionAnalyzer()
 
