@@ -44,11 +44,13 @@
   This script evaluates multiple pre-trained emotion classification models on a labeled dataset. It maps model-specific labels to a universal emotion set and computes classification metrics using batch inference.
   - **Models:**
     An ensemble of three emotion models is used, weighted based on accuracy and F1 scores:
+    
   | Model                                        | Weight |
   |----------------------------------------------|--------|
   | Model 1: `michellejieli/emotion text classifier`| Weights of 0.2|
   | Model 2: `j-hartmann/emotion-english-distilroberta-base`| Weights of 0.4|
   | Model 3: `bhadresh-savani/distilbert-base-uncased-emotion`| Weights of 0.4|
+  
   - **Maping:**
 
     Each model’s output is converted to a distribution over the universal emo-tions using predefined mapping dictionaries:
